@@ -1,82 +1,144 @@
 """
 router.py — Router Node (意图路由)
 ===================================
-角色：分析用户查询，决定调用哪些 Agent。
+Phase 2 升级：LLM 意图分类 + 多 Agent 分发。
 
-路由策略 (Phase 1 简化):
-- Phase 1 MVP 只有 Knowledge Agent
-- 所有查询都路由到 knowledge
-- Phase 2 加入故障诊断等 Agent 后，这里做多 Agent 路由
+路由策略:
+  1. 关键词快速匹配（正则，<1ms）
+  2. 命中 → 直接路由到对应 Agent
+  3. 未命中 → 用轻量 LLM 做意图分类
+  4. 所有路由默认包含 knowledge agent（提供文档支撑）
 
-查询类型分类:
-- 复用 HybridRetriever.classify_query() 做查询分类
-- Phase 2 用 LLM 做更细粒度的意图识别
-
-使用方式 (LangGraph):
-    graph.add_node("router", router_node)
-    graph.add_conditional_edges("router", route_after_router, {
-        "knowledge": "knowledge",
-        "END": END,  # 无匹配 Agent
-    })
-
-注意事项:
-- Router 不调 LLM (Phase 1)，延迟 < 2ms
-- Phase 2 引入 LLM 意图分类时注意成本和延迟
-- 查询分类结果写入 state.query_type，供检索层动态调整 RRF 权重
+Agent 覆盖范围:
+  - diagnosis:  故障分析、根因推断
+  - inspection: 巡检预警、设备状态分析
+  - scheduling: 排程优化、产能评估
+  - quality:    质量分析、缺陷追溯
+  - report:     数据报表、OEE查询
+  - knowledge:  文档检索（所有查询都会走的基底Agent）
 """
 
+import re
+import time
+
 from src.graph.state import AgentState
-from src.retrieval.hybrid import HybridRetriever
+from src.model.router import router as model_router, TaskComplexity
 from src.core.logging import get_logger
 
 logger = get_logger(__name__)
 
+# 意图 → Agent 映射（关键词匹配）
+INTENT_KEYWORDS: dict[str, list[str]] = {
+    "diagnosis":  ["故障", "报警", "异常", "不工作", "坏了", "停机", "怎么修", "排查原因", "根因",
+                   "怎么回事", "出问题", "报错", "error", "alarm", "fault"],
+    "inspection": ["巡检", "点检", "运行状态", "监控", "预警", "趋势", "检查项目", "每天检查"],
+    "scheduling": ["排程", "排产", "产能", "加班", "调班", "交货期", "能不能做", "产能够"],
+    "quality":    ["缺陷", "不良", "废品", "质量", "良率", "缩水", "毛边", "飞边", "尺寸超差",
+                   "表面", "外观", "颜色", "变形", "裂开"],
+    "report":     ["OEE", "报表", "统计", "产量", "本月", "昨天", "趋势", "对比", "多少",
+                   "合格率", "良品率", "良率", "产出", "效率", "下降", "增长", "上升",
+                   "环比", "同比", "每日", "每周", "月度"],
+}
 
-# Phase 1: 所有查询都路由到 knowledge agent
-_PHASE1_AGENTS = ["knowledge"]
+# 关键词匹配的意图优先级（某些词可能匹配多个意图，按优先级选）
+INTENT_PRIORITY = ["diagnosis", "inspection", "quality", "scheduling", "report"]
+
+
+def _keyword_classify(query: str) -> list[str]:
+    """关键词快速分类，返回匹配的 Agent 列表。
+
+    示例:
+        _keyword_classify("料筒温度异常怎么处理")
+        → ["diagnosis", "knowledge"]   （"异常"命中 diagnosis）
+
+        _keyword_classify("注塑机怎么换模具")
+        → ["knowledge"]                 （无关键词命中，兜底）
+
+        _keyword_classify("最近良率怎么样")
+        → ["report", "quality", "knowledge"]  （"良率"同时命中 report 和 quality）
+    """
+    agents = set()
+    for agent, keywords in INTENT_KEYWORDS.items():
+        for kw in keywords:
+            if kw in query:
+                agents.add(agent)
+                break  # 一个关键词命中就够
+    agents.add("knowledge")  # knowledge 始终参与
+    return list(agents)
+
+
+async def _llm_classify(query: str) -> list[str]:
+    """LLM 意图分类（关键词未命中时的兜底）。
+
+    用轻量模型做一次快速分类，返回 Agent 列表。
+    延迟 ~300-500ms，仅兜底时使用。
+    """
+    prompt = f"""分析以下用户查询，判断属于哪类任务。可多选。
+
+查询: "{query}"
+
+任务类型:
+- diagnosis: 设备故障诊断、报警处理、根因分析
+- inspection: 巡检、点检、设备状态检查
+- scheduling: 排程、产能、交货期
+- quality: 产品质量、缺陷分析、良率
+- report: 数据报表、统计查询、OEE
+
+回答格式: 只输出任务类型，多个用逗号分隔。
+示例: "diagnosis,knowledge"
+"""
+
+    try:
+        result = await model_router.chat(
+            messages=[{"role": "user", "content": prompt}],
+            model=model_router.simple_task_model,
+            max_tokens=50,
+            temperature=0,
+        )
+        raw = result.content.strip().lower()
+        agents = [a.strip() for a in raw.split(",") if a.strip() in INTENT_KEYWORDS]
+        if not agents:
+            agents = ["knowledge"]
+        agents.append("knowledge")
+        return list(set(agents))
+    except Exception:
+        return ["knowledge"]
 
 
 async def router_node(state: AgentState) -> dict:
-    """Router Node 执行函数。
+    """Router Node — 意图分类 + Agent 分发。
 
-    返回: state 增量更新 dict
-          routed_agents: ["knowledge"]
-          query_type: "exact" / "mixed" / "semantic"
+    Phase 2: 关键词优先 → LLM 兜底 → 多 Agent 分发。
 
-    示例:
-        state.user_query = "海天MA1200 料筒温度异常怎么处理"
-        result = await router_node(state)
-        # result = {"routed_agents": ["knowledge"], "query_type": "mixed"}
-
-    路由逻辑:
-    Phase 1: 全部 → knowledge
-    Phase 2: 故障关键词 → diagnosis + knowledge, 质量关键词 → quality + knowledge, etc.
+    返回: routed_agents + query_type
     """
     query = state.user_query
+    t0 = time.time()
 
-    # Phase 1: 全部路由到 knowledge
-    agents = _PHASE1_AGENTS
+    # 1. 关键词快速分类
+    agents = _keyword_classify(query)
 
-    # 查询类型分类 (用于检索层调整 RRF 权重)
-    # 这里用正则快速分类，不需要 HybridRetriever 实例
-    import re
+    # 2. 只有 knowledge → 尝试 LLM 分类（可能是长尾意图）
+    if agents == ["knowledge"] and len(query) > 10:
+        agents = await _llm_classify(query)
+
+    # 3. 查询类型（用于 RRF 权重）
     alarm_pattern = re.compile(r'\b[A-Z]{2,}-\w{3,}\b')
-    model_pattern = re.compile(r'([A-Z]{2,}\d{2,}|[A-Z]+-[A-Z]+\d+)|\b[A-Z]{2,}\d{3,}\b')
-
+    model_pattern = re.compile(r'([A-Z]{2,}\d{2,})')
     has_alarm = bool(alarm_pattern.search(query))
     has_model = bool(model_pattern.search(query))
-    fault_kw = ["异常", "故障", "报警", "怎么", "处理", "维修", "排查", "原因"]
 
     if has_alarm:
         query_type = "exact"
-    elif has_model and any(kw in query for kw in fault_kw):
+    elif has_model and any(kw in query for kw in ["异常", "故障", "报警", "处理", "维修"]):
         query_type = "mixed"
     elif has_model:
         query_type = "exact"
     else:
         query_type = "semantic"
 
-    logger.info(f"Router: query_type={query_type}, agents={agents}")
+    latency = (time.time() - t0) * 1000
+    logger.info(f"Router: agents={agents}, query_type={query_type}, latency={latency:.0f}ms")
 
     return {
         "routed_agents": agents,
