@@ -60,6 +60,20 @@ async def lifespan(app: FastAPI):
     logger.info(f"LLM: 主={settings.default_model}, 备={settings.fallback_model}")
     logger.info(f"嵌入模型: {settings.embedding_model} on {settings.embedding_device}")
 
+    # 初始化数据库 (SQLite: data/manufacturing.db)
+    from src.core.database import init_db
+    await init_db()
+
+    # Phase 2: 尝试连 Redis (不可用自动降级)
+    from src.core.redis_client import get_redis as _get_redis, is_redis_available
+    if await is_redis_available():
+        redis = await _get_redis()
+        from src.memory.session import get_session_memory
+        get_session_memory().configure_redis(redis)
+        logger.info("Redis 已连接，会话/缓存持久化已启用")
+    else:
+        logger.info("Redis 不可用，使用内存模式")
+
     # 预热: 确保 Graph 在第一个请求到达前编译完成
     try:
         from src.api.deps import get_compiled_graph as _get_graph
@@ -68,7 +82,14 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"Graph 预热失败: {e}")
 
-    logger.info("应用启动完成 (种子数据通过 POST /api/v1/admin/seed 加载)")
+    # 自动加载种子数据（BM25内存索引 + Milvus向量库）
+    try:
+        from src.api.routes.admin import load_seed
+        await load_seed()
+    except Exception as e:
+        logger.warning(f"种子数据加载跳过: {e}")
+
+    logger.info("应用启动完成")
 
     yield
 
@@ -100,8 +121,9 @@ app.add_middleware(
 # 路由
 app.include_router(conversation.router, prefix="/api/v1")
 app.include_router(health.router, prefix="/api/v1")
-from src.api.routes import admin
+from src.api.routes import admin, knowledge as knowledge_route
 app.include_router(admin.router, prefix="/api/v1")
+app.include_router(knowledge_route.router, prefix="/api/v1")
 
 # 全局异常处理
 @app.exception_handler(ManufacturingAgentError)

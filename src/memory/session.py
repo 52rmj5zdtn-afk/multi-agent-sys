@@ -65,26 +65,27 @@ MAX_MESSAGE_LENGTH = 2000  # 单条消息最长 2000 字符
 
 
 class SessionMemory:
-    """会话记忆管理器 (Phase 1: 内存实现)。
+    """会话记忆管理器 (Phase 1: 内存, Phase 2: Redis)。
 
-    Phase 2 切 Redis，接口不变。
+    Redis 可用时自动使用 Redis 持久化，否则降级到内存。
 
     示例:
         memory = SessionMemory()
+        await memory.configure_redis(redis_client)  # Phase 2: 连 Redis
         await memory.add_message("s1", {"role": "user", "content": "你好"})
         ctx = await memory.get_context("s1")
-        print(ctx)  # [{"role": "user", "content": "你好"}]
     """
 
     def __init__(self, max_messages: int = 20):
-        """
-        Args:
-            max_messages: 每个会话保留的最大消息数 (轮数 × 2)
-        """
         self.max_messages = max_messages
-        self._sessions: dict[str, list[dict]] = {}   # 内存存储
-        self._created_at: dict[str, float] = {}       # 会话创建时间
-        self._last_active: dict[str, float] = {}      # 最后活跃时间
+        self._sessions: dict[str, list[dict]] = {}
+        self._created_at: dict[str, float] = {}
+        self._last_active: dict[str, float] = {}
+        self._redis = None  # Phase 2
+
+    def configure_redis(self, redis_client) -> None:
+        """Phase 2: 配置 Redis，启用持久化。"""
+        self._redis = redis_client
 
     def _ensure_session(self, session_id: str) -> None:
         """确保会话存在。"""
@@ -94,73 +95,45 @@ class SessionMemory:
         self._last_active[session_id] = time.time()
 
     async def add_message(self, session_id: str, message: dict) -> None:
-        """添加一条消息到会话末尾。
-
-        参数:
-            session_id: 会话 ID
-            message: {"role": "user", "content": "..."}
-                     或 {"role": "assistant", "content": "...", "citations": [...], "model": "..."}
-
-        示例:
-            await memory.add_message("session_abc", {
-                "role": "user",
-                "content": "料筒温度异常怎么处理"
-            })
-        """
         self._ensure_session(session_id)
 
-        # 长文本截断 (避免日志/代码粘贴撑爆上下文)
         msg = dict(message)
         content = msg.get("content", "")
         if len(content) > MAX_MESSAGE_LENGTH:
             msg["content"] = content[:MAX_MESSAGE_LENGTH] + f"\n... [已截断, 原文{len(content)}字符]"
             msg["truncated"] = True
-
-        # 添加时间戳
         if "timestamp" not in msg:
             msg["timestamp"] = time.time()
 
-        self._sessions[session_id].append(msg)
+        # Phase 2: Redis 持久化
+        if self._redis:
+            import json
+            key = f"session:{session_id}"
+            await self._redis.rpush(key, json.dumps(msg, ensure_ascii=False, default=str))
+            await self._redis.ltrim(key, -self.max_messages, -1)
+            await self._redis.expire(key, 7200)
+        else:
+            self._sessions[session_id].append(msg)
+            if len(self._sessions[session_id]) > self.max_messages:
+                self._sessions[session_id] = self._sessions[session_id][-self.max_messages:]
 
-        # 保持窗口大小
-        if len(self._sessions[session_id]) > self.max_messages:
-            # 从头部弹旧消息
-            self._sessions[session_id] = self._sessions[session_id][-self.max_messages:]
+        logger.debug(f"会话 [{session_id}] 添加消息")
 
-        logger.debug(f"会话 [{session_id}] 添加消息, 当前 {len(self._sessions[session_id])}/{self.max_messages} 条")
-
-    async def get_context(
-        self,
-        session_id: str,
-        max_messages: int | None = None,
-        as_llm_format: bool = True,
-    ) -> list[dict]:
-        """获取当前会话的上下文消息。
-
-        参数:
-            session_id: 会话 ID
-            max_messages: 返回的最大消息数 (默认使用实例配置)
-            as_llm_format: True → 返回 {"role": "...", "content": "..."} 格式 (LLM 可直接用)
-                          False → 返回完整消息 (含 citations, model 等扩展字段)
-
-        返回: 消息列表，从旧到新排列
-
-        示例:
-            # 获取完整上下文，用于构建 LLM prompt
-            llm_msgs = await memory.get_context("session_abc")
-            llm_msgs.insert(0, {"role": "system", "content": system_prompt})
-
-            # 获取原始消息 (含引用信息)
-            raw = await memory.get_context("session_abc", as_llm_format=False)
-            citations = raw[-1].get("citations", [])
-        """
+    async def get_context(self, session_id, max_messages=None, as_llm_format=True) -> list[dict]:
         self._ensure_session(session_id)
         limit = max_messages or self.max_messages
-        messages = self._sessions[session_id][-limit:]
+
+        # Phase 2: Redis
+        if self._redis:
+            import json
+            key = f"session:{session_id}"
+            raw = await self._redis.lrange(key, -limit, -1)
+            messages = [json.loads(m) for m in raw]
+        else:
+            messages = self._sessions[session_id][-limit:]
 
         if as_llm_format:
             return [{"role": m["role"], "content": m["content"]} for m in messages]
-
         return list(messages)
 
     async def get_last_user_message(self, session_id: str) -> Optional[dict]:
