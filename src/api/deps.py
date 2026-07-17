@@ -20,7 +20,7 @@ from src.graph.builder import build_graph
 from src.graph.checkpoint import get_checkpoint_manager
 from src.retrieval.hybrid import HybridRetriever
 from src.retrieval.bm25 import BM25Retriever
-from src.retrieval.dense import DenseRetriever
+from src.retrieval.dense import DenseRetriever, get_dense_retriever
 from src.retrieval.reranker import Reranker
 from src.memory.session import get_session_memory
 from src.memory.compressor import get_compressor
@@ -30,7 +30,7 @@ from src.memory.compressor import get_compressor
 def get_hybrid_retriever() -> HybridRetriever:
     """获取混合检索器 (全局单例)。"""
     bm25 = BM25Retriever()
-    dense = DenseRetriever()
+    dense = get_dense_retriever()  # 自动选择 memory/milvus
     reranker = Reranker()
     return HybridRetriever(bm25, dense, reranker)
 
