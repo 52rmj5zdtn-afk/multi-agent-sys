@@ -1,49 +1,16 @@
 """
 reranker.py — Cross-encoder 重排序
 ===================================
-角色：对混合检索的候选结果做精排，用 Cross-encoder 模型计算查询和文档的精确相关性。
+Phase 1: 轻量模拟 (Reranker) — 按来源权重 + 型号boost + 报警码boost
+Phase 2: 真实模型 (BGEReranker) — BGE-Reranker-v2-m3 Cross-encoder
 
-为什么要 Re-ranker:
-- BM25 只看关键词匹配，可能把"温度"相关文档全排在前面，但"料筒温度"才是用户要的
-- Dense (向量) 看的是语义相似度，但可能把"温度异常→天气太热→空调故障"排到前面
-- Cross-encoder 把查询和文档同时输入，做逐 token 的深度匹配，精度更高
-
-三段式检索流程:
-  Step 1: BM25 (ES)  → 粗召回 50 条  (快速, 关键词精度)
-  Step 2: Dense (Milvus) → 粗召回 50 条 (快速, 语义相关性)
-  Step 3: RRF 融合 → 合并去重 → 30 条候选
-  Step 4: Re-ranker → 精排 → Top-10/20
-
-性能权衡:
-- Step 1+2: 毫秒级 (向量检索 + BM25)
-- Step 4: 相对慢 (每个 query-doc pair 都要过模型，30 条约 500ms)
-- 所以 Re-ranker 只对 RRF 融合后的 Top-30 做精排，不对原始的 100 条全排
-
-模型选择: BGE-Reranker-v2-m3
-- 中文 Cross-encoder 精度最高的之一
-- 支持处理长文本 (最大 8192 tokens)
-
-使用示例:
-    from src.retrieval.reranker import Reranker
-    reranker = Reranker()
-    query = "注塑机料筒温度异常怎么处理"
-    candidates = [
-        "步骤1: 检查温控器...   步骤2: 测量传感器电阻...",
-        "注塑机每日点检项目包括: 1. 检查料筒加热圈...",
-        "冲压模具保养周期表, 每5000次冲压需检查...",
-    ]
-    ranked = await reranker.rerank(query, candidates, top_k=3)
-    for cand in ranked:
-        print(f"[{cand['relevance_score']:.3f}] {cand['content'][:60]}")
-
-注意事项:
-- Phase 1 提供轻量实现 (基于 BM25 分数模拟，不需要下载模型)
-- Phase 2 接入真正的 BGE-Reranker-v2-m3
-- Re-ranker 调用频率 = 每次搜索 × 1，是检索链路的性能瓶颈
-- 候选集越大越慢: 推荐 20-30 条候选做精排
+切换方式: RERANKER_BACKEND=bge 环境变量
+默认 Phase 1 轻量模拟，无需下载模型。
 """
 
+import re
 from dataclasses import dataclass
+from pathlib import Path
 
 from src.core.logging import get_logger
 
@@ -54,99 +21,41 @@ logger = get_logger(__name__)
 class RerankResult:
     chunk_id: str
     content: str
-    relevance_score: float   # [0, 1], 越高越相关
-    original_rank: int       # 原排名
-    source: str = ""         # "bm25" / "dense" / "sop" / "case"
+    relevance_score: float
+    original_rank: int
+    source: str = ""
 
+
+# ── Phase 1: 轻量模拟 ─────────────────────────
 
 class Reranker:
-    """重排序器 (Phase 1: 轻量模拟实现)。
+    """Phase 1 轻量重排序: 按权重 + boost 模拟 Cross-encoder 行为。
 
-    实际原理: 模拟 Cross-encoder 行为，对混合检索的结果按分数加权。
-    Phase 2 替换为 BGE-Reranker-v2-m3 实现。
-
-    示例:
-        reranker = Reranker()
-        ranked = await reranker.rerank(
-            query="料筒温度异常",
-            candidates=[
-                {"id": "c1", "content": "检查温控器", "score": 0.85, "source": "dense"},
-                {"id": "c2", "content": "冲压线操作规程", "score": 0.45, "source": "bm25"},
-            ],
-            equipment_model="海天MA1200",
-        )
-        # ranked[0]: 最相关的结果
+    不需要下载模型，首次调用即可用。
     """
 
     def __init__(self):
-        self._model_loaded = False
-
-    async def _load_model(self) -> None:
-        """Phase 2: 加载 BGE-Reranker-v2-m3 模型。"""
-        # TODO Phase 2: 真正加载模型
-        # from FlagEmbedding import FlagReranker
-        # self.model = FlagReranker("BAAI/bge-reranker-v2-m3", use_fp16=True)
         self._model_loaded = True
 
-    async def rerank(
-        self,
-        query: str,
-        candidates: list[dict],
-        top_k: int = 10,
-        equipment_model: str | None = None,
-    ) -> list[RerankResult]:
-        """对候选集做精排。
-
-        参数:
-            query: 用户查询
-            candidates: 候选列表，每个 dict: {id, content, score, source}
-            top_k: 返回 Top-K 结果
-            equipment_model: 可选，用于型号 boost
-
-        返回: RerankResult 列表，按相关性降序
-
-        排序策略 (Phase 1 轻量版):
-        1. 基础分 = 原始检索分数 * 来源权重
-           - sop (官方文档): weight=1.2 (优先级最高)
-           - verified case (已验证案例): weight=1.0
-           - unverified case (待验证案例): weight=0.7
-        2. 型号 boost: 候选内容含查询中的设备型号 → score × 1.3
-        3. 报警码精确匹配 boost: 候选含查询的报警码 → score × 1.5
-        4. 对原始分做归一化，去重后按最终分降序
-        """
+    async def rerank(self, query: str, candidates: list[dict], top_k: int = 10,
+                     equipment_model: str | None = None) -> list[RerankResult]:
         if not candidates:
             return []
 
-        # 提取查询中可能的设备型号和报警码
         query_upper = query.upper()
-        query_keywords = query.lower().split()
-
-        # 来源权重
-        source_weights = {
-            "sop": 1.2,
-            "verified_case": 1.0,
-            "unverified_case": 0.7,
-            "dense": 1.0,
-            "bm25": 1.0,
-        }
-
-        results = []
-        seen_contents = set()  # 去重 (相同内容只保留分数最高的)
+        source_weights = {"sop": 1.2, "verified_case": 1.0, "unverified_case": 0.7, "dense": 1.0, "bm25": 1.0}
+        results: list[RerankResult] = []
+        seen = set()
 
         for rank, cand in enumerate(candidates):
             content = cand.get("content", "")
             source = cand.get("source", "bm25")
             score = cand.get("score", 0.5)
-
-            # 基础权重
             weight = source_weights.get(source, 1.0)
 
-            # 型号 boost: 候选内容包含用户查询里的设备型号 → +30%
             if equipment_model and equipment_model.lower() in content.lower():
                 weight *= 1.3
 
-            # 报警码 boost: 候选含报警码格式 (如 HT-E-0021)
-            import re
             alarm_codes = re.findall(r'[A-Z]{2,}-\w{3,}', query_upper)
             for code in alarm_codes:
                 if code in content.upper():
@@ -154,21 +63,127 @@ class Reranker:
                     break
 
             final_score = min(score * weight, 1.0)
-
-            # 去重
-            content_fingerprint = content[:100].strip()
-            if content_fingerprint in seen_contents:
+            fp = content[:100].strip()
+            if fp in seen:
                 continue
-            seen_contents.add(content_fingerprint)
+            seen.add(fp)
+            results.append(RerankResult(chunk_id=cand.get("id", ""), content=content,
+                                        relevance_score=final_score, original_rank=rank, source=source))
 
-            results.append(RerankResult(
-                chunk_id=cand.get("id", ""),
-                content=content,
-                relevance_score=final_score,
-                original_rank=rank,
-                source=source,
-            ))
-
-        # 按相关性分数降序
         results.sort(key=lambda r: (r.relevance_score, -r.original_rank), reverse=True)
         return results[:top_k]
+
+
+# ── Phase 2: BGE-Reranker-v2-m3 ───────────────
+
+class BGEReranker:
+    """Phase 2 真实 Cross-encoder 重排序。
+
+    加载 BGE-Reranker-v2-m3 (~1.1GB)，对 query-doc pair 做深度语义匹配。
+    首次调用自动下载模型 (优先 ModelScope 缓存)。
+
+    性能: 30 个候选对约 300-500ms (CPU)，GPU < 50ms。
+    """
+
+    def __init__(self, model_name: str = "BAAI/bge-reranker-v2-m3", device: str = "cpu"):
+        self.model_name = model_name
+        self.device = device
+        self._model = None
+
+    def _load(self):
+        if self._model is not None:
+            return
+
+        # 优先 ModelScope 缓存
+        import os
+        model_path = str(Path.home() / ".cache" / "modelscope" / "models" / self.model_name.replace("/", "--") / "snapshots" / "master")
+        if not Path(model_path).exists():
+            model_path = self.model_name
+            if "HF_ENDPOINT" not in os.environ:
+                os.environ["HF_ENDPOINT"] = "https://hf-mirror.com"
+
+        logger.info(f"加载 Re-ranker 模型: {model_path}")
+        from sentence_transformers import CrossEncoder
+        self._model = CrossEncoder(model_path, device=self.device)
+        logger.info("Re-ranker 模型加载完成")
+
+    async def rerank(self, query: str, candidates: list[dict], top_k: int = 10,
+                     equipment_model: str | None = None) -> list[RerankResult]:
+        """Cross-encoder 精排。
+
+        对每个 (query, candidate_content) pair 计算相关性分数，
+        按分数降序返回 Top-K。
+
+        示例:
+            reranker = BGEReranker()
+            results = await reranker.rerank(
+                query="料筒温度异常",
+                candidates=[{"id":"c1","content":"...","score":0.85,"source":"dense"}, ...],
+                top_k=5,
+            )
+        """
+        if not candidates:
+            return []
+
+        self._load()
+
+        # 构建 query-doc pairs
+        pairs = [(query, cand.get("content", "")) for cand in candidates]
+
+        # 批量推理 (同步, 用 run_in_executor 异步化)
+        import asyncio
+        loop = asyncio.get_running_loop()
+        scores = await loop.run_in_executor(None, lambda: self._model.predict(pairs).tolist())
+
+        # 构建结果
+        results = []
+        for i, cand in enumerate(candidates):
+            score = float(scores[i])
+            # Cross-encoder 输出是原始分数，做 sigmoid 映射到 [0, 1]
+            import math
+            normalized = 1.0 / (1.0 + math.exp(-score))
+            results.append(RerankResult(
+                chunk_id=cand.get("id", ""),
+                content=cand.get("content", ""),
+                relevance_score=normalized,
+                original_rank=i,
+                source=cand.get("source", ""),
+            ))
+
+        results.sort(key=lambda r: r.relevance_score, reverse=True)
+        return results[:top_k]
+
+
+# ── 工厂函数 ──────────────────────────────────
+
+_reranker: Reranker | BGEReranker | None = None
+
+
+def get_reranker(backend: str = "auto") -> Reranker | BGEReranker:
+    """获取重排序器实例。
+
+    参数:
+        backend: "auto" (读环境变量) | "light" | "bge"
+
+    环境变量 RERANKER_BACKEND=bge 切换到真实模型。
+    """
+    global _reranker
+    if _reranker is not None:
+        return _reranker
+
+    if backend == "auto":
+        import os
+        backend = os.environ.get("RERANKER_BACKEND", "light")
+
+    if backend == "bge":
+        try:
+            _reranker = BGEReranker()
+            logger.info("Reranker backend: BGE-Reranker-v2-m3")
+        except Exception as e:
+            logger.warning(f"BGE Reranker 加载失败，降级到轻量版: {e}")
+            _reranker = Reranker()
+    else:
+        _reranker = Reranker()
+        logger.info("Reranker backend: 轻量模拟")
+
+    return _reranker
