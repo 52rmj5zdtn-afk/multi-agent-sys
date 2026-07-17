@@ -1,0 +1,76 @@
+# 制造业多Agent生产运维助手 — Docker Compose (开发环境)
+# 启动: docker-compose up -d
+# 停止: docker-compose down
+
+version: "3.8"
+
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: deployment/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-}
+      - DEEPSEEK_BASE_URL=${DEEPSEEK_BASE_URL:-https://api.deepseek.com/v1}
+      - QWEN_API_KEY=${QWEN_API_KEY:-}
+      - QWEN_BASE_URL=${QWEN_BASE_URL:-https://dashscope.aliyuncs.com/compatible-mode/v1}
+      - MILVUS_HOST=milvus
+      - MILVUS_PORT=19530
+      - ES_HOST=http://elasticsearch:9200
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=manufacturing
+      - POSTGRES_PASSWORD=manufacturing
+      - POSTGRES_DB=manufacturing_agent
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - LOG_LEVEL=INFO
+    depends_on:
+      redis:
+        condition: service_started
+    restart: unless-stopped
+    volumes:
+      - ../logs:/app/logs
+    networks:
+      - manufacturing
+
+  # Phase 2: 添加真实服务
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    networks:
+      - manufacturing
+
+  # Phase 2: 启用以下服务
+  # postgres:
+  #   image: postgres:16-alpine
+  #   environment:
+  #     POSTGRES_USER: manufacturing
+  #     POSTGRES_PASSWORD: manufacturing
+  #     POSTGRES_DB: manufacturing_agent
+  #   ports:
+  #     - "5432:5432"
+  #   volumes:
+  #     - pgdata:/var/lib/postgresql/data
+  #   networks:
+  #     - manufacturing
+
+  # milvus:
+  #   image: milvusdb/milvus:v2.4.0
+  #   ... (Phase 2)
+
+  # elasticsearch:
+  #   image: elasticsearch:8.12.0
+  #   ... (Phase 2)
+
+networks:
+  manufacturing:
+    driver: bridge
+
+# volumes:
+#   pgdata:
