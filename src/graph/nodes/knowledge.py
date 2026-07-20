@@ -184,18 +184,39 @@ def create_knowledge_node(ctx: KnowledgeNodeContext):
         # 2. 获取会话历史
         history = await ctx.session_memory.get_context(session_id, as_llm_format=True)
 
-        # 3. 混合检索
+        # 3. 混合检索 (主知识库)
         try:
             search_results = await ctx.hybrid_retriever.search(
                 query=query,
                 workshop_id=workshop_id,
                 top_k=10,
                 include_sop=True,
-                include_cases=False,  # Phase 3
+                include_cases=False,
             )
         except Exception as e:
             logger.error(f"检索失败: {e}")
             search_results = []
+
+        # 3.5 Phase 3: 长期记忆召回 (类似故障经验)
+        case_context = ""
+        try:
+            from src.memory.persistent import get_long_term_memory
+            ltm = get_long_term_memory()
+            case_hits = await ltm.recall(
+                query_text=query, workshop_id=workshop_id, top_k=5,
+            )
+            if case_hits:
+                case_lines = []
+                for i, h in enumerate(case_hits):
+                    verified_mark = "已验证" if h.verified else "待验证"
+                    case_lines.append(
+                        f"[历史案例{i+1} - {verified_mark}] 设备:{h.equipment_model} 故障码:{h.fault_code}\n"
+                        f"问题: {h.query}\n解决方案: {h.answer_summary}"
+                    )
+                case_context = "\n\n".join(case_lines)
+                logger.info(f"长期记忆召回: {len(case_hits)} 条")
+        except Exception as e:
+            logger.warning(f"长期记忆召回跳过: {e}")
 
         # 4. 提取检索文本 + 清洗 (防第三方文档注入)
         retrieved_chunks = [r["content"] for r in search_results]
@@ -221,9 +242,16 @@ def create_knowledge_node(ctx: KnowledgeNodeContext):
         ]
 
         # 7. 构建 Prompt + 调用 LLM
+        # 合并主知识库 + 长期记忆
+        full_context = retrieved_context
+        if case_context:
+            full_context = (
+                f"## 官方文档 (SOP/设备手册)\n{retrieved_context}\n\n"
+                f"## 历史维修案例 (仅供参考, 以官方SOP为准)\n{case_context}"
+            )
         messages = build_prompt(
             query=query,
-            retrieved_context=retrieved_context,
+            retrieved_context=full_context,
             workshop_id=workshop_id,
             user_role=role,
             conversation_history=history,
