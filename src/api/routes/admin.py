@@ -130,3 +130,22 @@ SEED_CASES = [
         "verified": False,
     },
 ]
+
+
+# Phase 3: 案例审核接口
+@router.get("/cases/pending")
+async def list_pending_cases():
+    """GET /api/v1/admin/cases/pending — 列出待审核案例。"""
+    from src.memory.persistent import get_long_term_memory
+    ltm = get_long_term_memory()
+    cases = await ltm.get_pending_cases()
+    return APIResponse(data={"items": cases, "total": len(cases)}).model_dump()
+
+
+@router.post("/cases/{case_id}/approve")
+async def approve_case(case_id: str):
+    """POST /api/v1/admin/cases/{case_id}/approve — 审核通过案例。"""
+    from src.memory.persistent import get_long_term_memory
+    ltm = get_long_term_memory()
+    ok = await ltm.approve_case(case_id)
+    return APIResponse(data={"case_id": case_id, "approved": ok}).model_dump()
