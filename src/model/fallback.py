@@ -111,17 +111,18 @@ class FallbackChain:
         except (ModelCircuitOpenError, Exception) as e:
             logger.warning(f"备选模型 [{self.fallback_model}] 不可用: {e}")
 
-        # Step 3: 规则兜底
+        # Step 3: 规则库兜底
         self._set_global_degrade()
+        from src.model.rule_engine import match_rule
+        rule_result = match_rule(query)
+        if rule_result:
+            logger.info(f"规则库命中: {query[:50]}")
+            return ModelResult(content=rule_result, model="rule_fallback", fallback_used=True)
         if rule_fallback_fn and query:
             fallback_text = await rule_fallback_fn(query) if callable(rule_fallback_fn) else None
             if fallback_text:
-                logger.info("使用规则降级兜底")
-                return ModelResult(
-                    content=fallback_text,
-                    model="rule_fallback",
-                    fallback_used=True,
-                )
+                logger.info("使用自定义降级兜底")
+                return ModelResult(content=fallback_text, model="rule_fallback", fallback_used=True)
 
         raise AllModelsFailedError("所有模型 + 规则兜底均不可用")
 

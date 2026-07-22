@@ -41,7 +41,7 @@
                 >
                   <el-icon class="el-icon--upload" :size="32"><UploadFilled /></el-icon>
                   <div class="el-upload__text">拖拽文件到此处或 <em>点击选择</em></div>
-                  <template #tip><div class="tip">支持 TXT/MD/CSV，可一次选择多个文件</div></template>
+                  <template #tip><div class="tip">支持 PDF/Word/Excel/TXT/MD/CSV，可一次选择多个文件</div></template>
                 </el-upload>
               </el-form-item>
               <el-form-item label="文档类型">

@@ -150,8 +150,26 @@ class LongTermMemory:
             "source": "verified_case" if case.verified else "unverified_case",
         }])
 
-        # 本地缓存
+        # 本地缓存 + DB持久化
         self._cases[case.case_id] = case
+        try:
+            import asyncio as _asyncio
+            from src.core.database import get_session_factory
+            from src.data.models import KnowledgeCase
+            factory = get_session_factory()
+            async def _save():
+                async with factory() as session:
+                    session.add(KnowledgeCase(
+                        case_id=case.case_id, equipment_model=case.equipment_model,
+                        fault_code=case.fault_code, fault_category=case.fault_category,
+                        root_cause=case.query, repair_steps=[case.answer_summary],
+                        verification="verified" if case.verified else "unverified",
+                        weight=1.0 if case.verified else 0.7, status="active",
+                    ))
+                    await session.commit()
+            try: _asyncio.get_running_loop(); _asyncio.create_task(_save())
+            except RuntimeError: pass
+        except Exception: pass
         logger.info(f"长期记忆保存: {case.case_id} ({case.equipment_model}/{case.fault_code})")
         return case.case_id
 

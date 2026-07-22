@@ -86,6 +86,24 @@ class AuditLogger:
         msg = json.dumps(asdict(entry), ensure_ascii=False, default=str)
         logger.bind(audit=True).log(level, msg)
         self._buffer.append(entry)
+        # Phase 3: 持久化到 DB
+        try:
+            import asyncio
+            from src.core.database import get_session_factory
+            from src.data.models import AuditLog
+            factory = get_session_factory()
+            async def _save():
+                async with factory() as session:
+                    session.add(AuditLog(
+                        event_type=entry.event_type, user_id=entry.user_id,
+                        agent_id=entry.agent_id, tool_name=entry.tool_name,
+                        target_table=entry.target_table, severity=entry.severity,
+                        detail=entry.detail, ip_address=entry.ip_address,
+                    ))
+                    await session.commit()
+            try: asyncio.get_running_loop(); asyncio.create_task(_save())
+            except RuntimeError: pass
+        except Exception: pass
 
     def log_block(
         self,

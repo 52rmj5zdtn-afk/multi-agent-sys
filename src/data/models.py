@@ -27,7 +27,7 @@ def _uuid():
 
 
 def _now():
-    return datetime.utcnow()
+    return datetime.now().replace(microsecond=0)
 
 
 # ── 用户与权限 ─────────────────────────────────
@@ -37,6 +37,7 @@ class User(Base):
 
     id = Column(String(36), primary_key=True, default=_uuid)
     username = Column(String(50), unique=True, nullable=False)
+    password_hash = Column(String(128), default="")
     display_name = Column(String(100), nullable=False)
     role = Column(String(30), nullable=False)
     workshop_id = Column(String(50), default="")

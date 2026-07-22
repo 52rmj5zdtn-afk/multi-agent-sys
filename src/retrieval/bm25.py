@@ -129,7 +129,16 @@ class BM25Retriever:
             self._simple_tokenize(doc.get("content", ""))
             for doc in self._corpus
         ]
-        self._bm25 = BM25Okapi(self._tokenized_corpus)
+        # 过滤空文档，避免 BM25Okapi 内部除零错误
+        non_empty = [(i, tokens) for i, tokens in enumerate(self._tokenized_corpus) if tokens]
+        if non_empty:
+            indices, filtered = zip(*non_empty)
+            self._corpus = [self._corpus[i] for i in indices]
+            self._id_to_idx = {d["id"]: i for i, d in enumerate(self._corpus)}
+            self._tokenized_corpus = list(filtered)
+            self._bm25 = BM25Okapi(self._tokenized_corpus)
+        else:
+            self._bm25 = None
         self._dirty = False
         logger.info(f"BM25 索引构建完成: {len(self._corpus)} 条")
 

@@ -78,14 +78,107 @@ class SessionMemory:
 
     def __init__(self, max_messages: int = 20):
         self.max_messages = max_messages
-        self._sessions: dict[str, list[dict]] = {}
+        self._sessions: dict[str, list[dict]] = {}       # {session_id: [messages]}
+        self._user_sessions: dict[str, list[str]] = {}   # {user_id: [session_ids]}
+        self._session_user: dict[str, str] = {}          # {session_id: user_id}
         self._created_at: dict[str, float] = {}
         self._last_active: dict[str, float] = {}
-        self._redis = None  # Phase 2
+        self._redis = None
 
     def configure_redis(self, redis_client) -> None:
-        """Phase 2: 配置 Redis，启用持久化。"""
         self._redis = redis_client
+
+    def bind_user(self, session_id: str, user_id: str) -> None:
+        """Phase 3: 绑定会话到用户。"""
+        self._session_user[session_id] = user_id
+        if user_id not in self._user_sessions:
+            self._user_sessions[user_id] = []
+        if session_id not in self._user_sessions[user_id]:
+            self._user_sessions[user_id].append(session_id)
+
+    def get_user_sessions(self, user_id: str) -> list[dict]:
+        """获取用户的所有会话摘要 (内存 + 数据库合并)。"""
+        sids = set(self._user_sessions.get(user_id, []))
+
+        # 1. 从数据库获取全部会话
+        db_sessions = self._restore_sessions_from_db(user_id)
+        for s in db_sessions:
+            sids.add(s["session_id"])
+
+        # 2. 构建结果：优先用内存数据，兜底用数据库
+        result = []
+        for sid in sids:
+            msgs = self._sessions.get(sid, [])
+            if msgs:
+                first_msg = msgs[0].get("content", "")[:50]
+                last_active = self._last_active.get(sid, 0)
+                result.append({
+                    "session_id": sid,
+                    "preview": first_msg,
+                    "message_count": len(msgs),
+                    "last_active": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(last_active)) if last_active else "",
+                    "created_at": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(self._created_at.get(sid, 0))) if self._created_at.get(sid) else "",
+                })
+            else:
+                # 从数据库数据填充
+                db_match = next((s for s in db_sessions if s["session_id"] == sid), None)
+                if db_match:
+                    result.append(db_match)
+
+        result.sort(key=lambda s: s["last_active"], reverse=True)
+        return result
+
+    def _restore_sessions_from_db(self, user_id: str) -> list[dict]:
+        """从 SQLite conversations 表恢复用户会话列表（同步方式）。"""
+        try:
+            import sqlite3
+            from pathlib import Path
+            db_path = Path(__file__).parent.parent.parent / "data" / "manufacturing.db"
+            conn = sqlite3.connect(str(db_path))
+            rows = conn.execute(
+                "SELECT session_id, MIN(created_at), COUNT(*) FROM conversations "
+                "WHERE user_id=? GROUP BY session_id ORDER BY MIN(created_at) DESC LIMIT 20",
+                (user_id,)
+            ).fetchall()
+            sessions = []
+            for sid, created, count in rows:
+                first = conn.execute(
+                    "SELECT content FROM conversations WHERE session_id=? AND role='user' ORDER BY created_at LIMIT 1",
+                    (sid,)
+                ).fetchone()
+                preview = (first[0] if first else "(空)")[:50]
+                # 截掉毫秒: "2026-07-20 16:26:04.000000" → "2026-07-20 16:26:04"
+                ts = str(created)[:19] if created else ""
+                sessions.append({
+                    "session_id": sid,
+                    "preview": preview,
+                    "message_count": count,
+                    "last_active": ts,
+                    "created_at": ts,
+                })
+            conn.close()
+            return sessions
+        except Exception:
+            return []
+
+    async def save_to_db(self, session_id: str, user_id: str, message: dict) -> None:
+        """Phase 3: 持久化消息到 SQLite conversations 表。"""
+        try:
+            from src.core.database import get_session_factory
+            from src.data.models import Conversation
+            factory = get_session_factory()
+            async with factory() as db_session:
+                db_session.add(Conversation(
+                    session_id=session_id, user_id=user_id,
+                    role=message.get("role", "user"),
+                    content=message.get("content", ""),
+                    citations=message.get("citations", []),
+                    token_count=message.get("token_count", 0),
+                    model_used=message.get("model", ""),
+                ))
+                await db_session.commit()
+        except Exception:
+            pass  # DB不可用时静默降级
 
     def _ensure_session(self, session_id: str) -> None:
         """确保会话存在。"""
@@ -94,8 +187,10 @@ class SessionMemory:
             self._created_at[session_id] = time.time()
         self._last_active[session_id] = time.time()
 
-    async def add_message(self, session_id: str, message: dict) -> None:
+    async def add_message(self, session_id: str, message: dict, user_id: str = "") -> None:
         self._ensure_session(session_id)
+        if user_id:
+            self.bind_user(session_id, user_id)
 
         msg = dict(message)
         content = msg.get("content", "")
@@ -105,7 +200,6 @@ class SessionMemory:
         if "timestamp" not in msg:
             msg["timestamp"] = time.time()
 
-        # Phase 2: Redis 持久化
         if self._redis:
             import json
             key = f"session:{session_id}"
@@ -116,6 +210,10 @@ class SessionMemory:
             self._sessions[session_id].append(msg)
             if len(self._sessions[session_id]) > self.max_messages:
                 self._sessions[session_id] = self._sessions[session_id][-self.max_messages:]
+
+        # Phase 3: 持久化到数据库
+        if user_id:
+            await self.save_to_db(session_id, user_id, msg)
 
         logger.debug(f"会话 [{session_id}] 添加消息")
 

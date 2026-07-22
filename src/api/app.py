@@ -28,6 +28,7 @@ app.py — FastAPI 应用入口
 """
 
 from contextlib import asynccontextmanager
+import asyncio
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -38,6 +39,15 @@ from src.core.logging import setup_logging, logger
 from src.core.exceptions import ManufacturingAgentError
 from src.api.routes import conversation, health
 from src.api.deps import get_compiled_graph
+
+
+async def _warmup_ocr():
+    """后台预热 OCR 模型，不阻塞启动流程。"""
+    try:
+        from src.integration.ocr import warmup
+        await warmup()
+    except Exception as e:
+        logger.warning(f"OCR 预热失败: {e}")
 
 
 @asynccontextmanager
@@ -60,6 +70,16 @@ async def lifespan(app: FastAPI):
     logger.info(f"LLM: 主={settings.default_model}, 备={settings.fallback_model}")
     logger.info(f"嵌入模型: {settings.embedding_model} on {settings.embedding_device}")
 
+    # 安全检查
+    if not settings.jwt_secret_key:
+        import secrets
+        settings.jwt_secret_key = secrets.token_hex(32)
+        logger.warning("JWT_SECRET_KEY 未设置，已生成随机密钥（服务重启后会话失效）")
+    if not settings.a2a_secret_key:
+        import secrets
+        settings.a2a_secret_key = secrets.token_hex(32)
+        logger.warning("A2A_SECRET_KEY 未设置，已生成随机密钥")
+
     # 初始化数据库 (SQLite: data/manufacturing.db)
     from src.core.database import init_db
     await init_db()
@@ -81,6 +101,12 @@ async def lifespan(app: FastAPI):
         logger.info("LangGraph 工作流已就绪")
     except Exception as e:
         logger.error(f"Graph 预热失败: {e}")
+
+    # OCR 模型后台预热（不阻塞后续启动）
+    try:
+        asyncio.create_task(_warmup_ocr())
+    except Exception as e:
+        logger.warning(f"OCR 预热跳过: {e}")
 
     # 自动加载种子数据（BM25内存索引 + Milvus向量库）
     try:
@@ -121,9 +147,29 @@ app.add_middleware(
 # 路由
 app.include_router(conversation.router, prefix="/api/v1")
 app.include_router(health.router, prefix="/api/v1")
-from src.api.routes import admin, knowledge as knowledge_route
+from src.api.routes import admin, knowledge as knowledge_route, auth as auth_route
 app.include_router(admin.router, prefix="/api/v1")
 app.include_router(knowledge_route.router, prefix="/api/v1")
+app.include_router(auth_route.router, prefix="/api/v1")
+
+# Rate Limit Middleware
+from src.api.middleware.ratelimit import RateLimitMiddleware
+app.add_middleware(RateLimitMiddleware)
+
+# Prometheus Metrics
+from src.observability.metrics import get_metrics_response
+@app.get("/metrics")
+async def metrics():
+    from fastapi.responses import Response
+    data, ct = get_metrics_response()
+    return Response(content=data, media_type=ct)
+
+# Static Uploads
+from pathlib import Path as _Path
+from fastapi.staticfiles import StaticFiles
+uploads_dir = _Path(__file__).parent.parent.parent / "data" / "uploads"
+uploads_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=str(uploads_dir)), name="uploads")
 
 # 全局异常处理
 @app.exception_handler(ManufacturingAgentError)

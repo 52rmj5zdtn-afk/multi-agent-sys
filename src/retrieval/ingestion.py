@@ -47,6 +47,7 @@ ingestion.py — 文档摄入管线
 
 from dataclasses import dataclass, field
 import uuid
+from pathlib import Path
 
 from src.core.logging import get_logger
 from src.retrieval.chunker import DocumentChunker, Chunk
@@ -108,9 +109,83 @@ class IngestionPipeline:
         self.chunker = chunker or DocumentChunker()
 
     async def _parse_content(self, doc: IngestDocument) -> str:
-        """解析文档内容 (Phase 1 已传入纯文本，后续扩展 PDF/Word解析)。"""
-        # TODO Phase 2: 接入 unstructured/pdfplumber 做真正的文件解析
+        """解析文档内容 — 支持 PDF/Word/Excel/TXT。
+
+        Phase 3: 接入 PyPDF2/python-docx/openpyxl 做多格式解析。
+        如果 content 已经有文本（种子数据），直接返回。
+        """
+        # 已有文本内容 → 直接返回
+        if doc.content and len(doc.content.strip()) > 50:
+            return doc.content
+
+        # 从文件路径解析
+        file_path = doc.metadata.get("file_path", "")
+        if not file_path:
+            return doc.content
+
+        ext = file_path.rsplit(".", 1)[-1].lower() if "." in file_path else ""
+
+        try:
+            if ext == "pdf":
+                return await self._parse_pdf(file_path)
+            elif ext in ("docx", "doc"):
+                return await self._parse_docx(file_path)
+            elif ext in ("xlsx", "xls"):
+                return await self._parse_xlsx(file_path)
+            elif ext in ("txt", "md", "csv"):
+                return Path(file_path).read_text(encoding="utf-8")
+        except Exception as e:
+            logger.warning(f"文档解析失败 {ext}: {e}")
+            return doc.content
+
         return doc.content
+
+    async def _parse_pdf(self, path: str) -> str:
+        """PDF 解析。"""
+        import asyncio
+        loop = asyncio.get_running_loop()
+
+        def _read():
+            import PyPDF2
+            text = ""
+            with open(path, "rb") as f:
+                reader = PyPDF2.PdfReader(f)
+                for page in reader.pages:
+                    page_text = page.extract_text()
+                    if page_text:
+                        text += page_text + "\n"
+            return text or "(PDF解析结果为空)"
+        return await loop.run_in_executor(None, _read)
+
+    async def _parse_docx(self, path: str) -> str:
+        """Word 解析。"""
+        import asyncio
+        loop = asyncio.get_running_loop()
+
+        def _read():
+            import docx
+            doc = docx.Document(path)
+            return "\n".join(p.text for p in doc.paragraphs if p.text.strip()) or "(Word解析结果为空)"
+        return await loop.run_in_executor(None, _read)
+
+    async def _parse_xlsx(self, path: str) -> str:
+        """Excel 解析: 保留表格结构，每行用 | 分隔。"""
+        import asyncio
+        loop = asyncio.get_running_loop()
+
+        def _read():
+            import openpyxl
+            wb = openpyxl.load_workbook(path, data_only=True)
+            text = ""
+            for sheet_name in wb.sheetnames:
+                ws = wb[sheet_name]
+                text += f"\n## {sheet_name}\n"
+                for row in ws.iter_rows(values_only=True):
+                    row_text = " | ".join(str(c) if c is not None else "" for c in row)
+                    if row_text.strip():
+                        text += row_text + "\n"
+            return text or "(Excel解析结果为空)"
+        return await loop.run_in_executor(None, _read)
 
     async def _clean(self, text: str) -> str:
         """轻量清洗: 去多余空行、统一换行符。"""

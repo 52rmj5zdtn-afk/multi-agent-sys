@@ -1,14 +1,15 @@
-# 制造业多Agent生产运维助手 — Docker Compose (开发环境)
+# 制造业多Agent生产运维助手 — Docker Compose
 # 启动: docker-compose up -d
-# 停止: docker-compose down
+# 查看: docker-compose logs -f backend
 
 version: "3.8"
 
 services:
-  api:
+  backend:
     build:
       context: ..
       dockerfile: deployment/Dockerfile
+    container_name: manufacturing-backend
     ports:
       - "8000:8000"
     environment:
@@ -16,61 +17,41 @@ services:
       - DEEPSEEK_BASE_URL=${DEEPSEEK_BASE_URL:-https://api.deepseek.com/v1}
       - QWEN_API_KEY=${QWEN_API_KEY:-}
       - QWEN_BASE_URL=${QWEN_BASE_URL:-https://dashscope.aliyuncs.com/compatible-mode/v1}
-      - MILVUS_HOST=milvus
-      - MILVUS_PORT=19530
-      - ES_HOST=http://elasticsearch:9200
-      - POSTGRES_HOST=postgres
-      - POSTGRES_PORT=5432
-      - POSTGRES_USER=manufacturing
-      - POSTGRES_PASSWORD=manufacturing
-      - POSTGRES_DB=manufacturing_agent
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
+      - EMBEDDING_DEVICE=cpu
+      - RERANKER_DEVICE=cpu
       - LOG_LEVEL=INFO
-    depends_on:
-      redis:
-        condition: service_started
-    restart: unless-stopped
+      - PYTHONUNBUFFERED=1
     volumes:
+      - model_cache:/root/.cache    # Embedding/Reranker 模型缓存
+      - ../data:/app/data           # 数据库/种子数据持久化
       - ../logs:/app/logs
-    networks:
-      - manufacturing
-
-  # Phase 2: 添加真实服务
-  redis:
-    image: redis:7-alpine
-    ports:
-      - "6379:6379"
     restart: unless-stopped
-    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 180s   # 首次启动种子加载需要 2-3 分钟
     networks:
       - manufacturing
 
-  # Phase 2: 启用以下服务
-  # postgres:
-  #   image: postgres:16-alpine
-  #   environment:
-  #     POSTGRES_USER: manufacturing
-  #     POSTGRES_PASSWORD: manufacturing
-  #     POSTGRES_DB: manufacturing_agent
-  #   ports:
-  #     - "5432:5432"
-  #   volumes:
-  #     - pgdata:/var/lib/postgresql/data
-  #   networks:
-  #     - manufacturing
-
-  # milvus:
-  #   image: milvusdb/milvus:v2.4.0
-  #   ... (Phase 2)
-
-  # elasticsearch:
-  #   image: elasticsearch:8.12.0
-  #   ... (Phase 2)
+  frontend:
+    build:
+      context: ..
+      dockerfile: deployment/Dockerfile.frontend
+    container_name: manufacturing-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - manufacturing
 
 networks:
   manufacturing:
     driver: bridge
 
-# volumes:
-#   pgdata:
+volumes:
+  model_cache:

@@ -32,6 +32,7 @@ class Settings(BaseSettings):
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
+        extra="ignore",  # 忽略 .env 中未定义的字段
     )
 
     # ── LLM ──────────────────────────────────────
@@ -40,8 +41,8 @@ class Settings(BaseSettings):
     qwen_api_key: str = ""
     qwen_base_url: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
     default_model: str = "deepseek-chat"
-    fallback_model: str = "qwen-turbo"
-    simple_task_model: str = "qwen-turbo"
+    fallback_model: str = "deepseek-chat"
+    simple_task_model: str = "deepseek-chat"
     complex_task_model: str = "deepseek-chat"
 
     # ── Milvus ───────────────────────────────────
@@ -72,18 +73,19 @@ class Settings(BaseSettings):
     embedding_model: str = "BAAI/bge-large-zh-v1.5"
     embedding_device: str = "cpu"
     embedding_dim: int = 1024
+    hf_endpoint: str = ""  # HuggingFace 镜像
 
     # ── Reranker ─────────────────────────────────
     reranker_model: str = "BAAI/bge-reranker-v2-m3"
     reranker_device: str = "cpu"
 
     # ── JWT / Auth ───────────────────────────────
-    jwt_secret_key: str = "change-me-in-production"
+    jwt_secret_key: str = ""
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 480
 
     # ── A2A ──────────────────────────────────────
-    a2a_secret_key: str = "change-me-in-production"
+    a2a_secret_key: str = ""
     a2a_signature_algorithm: str = "HS256"
     a2a_key_rotation_days: int = 30
 

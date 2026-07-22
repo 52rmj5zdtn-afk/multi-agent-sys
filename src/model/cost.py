@@ -74,9 +74,46 @@ class BudgetTracker:
 
     def record(self, workshop_id: str, agent: str, model: str, usage: TokenUsage) -> float:
         """记录消耗，返回当日该车间累计成本。"""
+        import asyncio
         cost = usage.calculate_cost()
         key = self._key(workshop_id, agent, model)
         self._daily_usage[key] = self._daily_usage.get(key, 0) + cost
+
+        # Phase 3: 持久化到 token_usage_daily 表
+        try:
+            from datetime import date as dt_date
+            from src.core.database import get_session_factory
+            from src.data.models import TokenUsageDaily
+            factory = get_session_factory()
+            async def _save():
+                async with factory() as session:
+                    from sqlalchemy import select
+                    today = dt_date.today()
+                    result = await session.execute(
+                        select(TokenUsageDaily).where(
+                            TokenUsageDaily.date == today,
+                            TokenUsageDaily.workshop_id == workshop_id,
+                            TokenUsageDaily.agent == agent,
+                            TokenUsageDaily.model == model,
+                        )
+                    )
+                    row = result.scalar_one_or_none()
+                    if row:
+                        row.prompt_tokens += usage.prompt_tokens
+                        row.completion_tokens += usage.completion_tokens
+                        row.cost += cost
+                        row.request_count += 1
+                    else:
+                        session.add(TokenUsageDaily(
+                            date=today, workshop_id=workshop_id, agent=agent, model=model,
+                            prompt_tokens=usage.prompt_tokens, completion_tokens=usage.completion_tokens,
+                            cost=cost, request_count=1,
+                        ))
+                    await session.commit()
+            import asyncio as _asyncio
+            try: _asyncio.get_running_loop(); _asyncio.create_task(_save())
+            except RuntimeError: pass  # 非异步上下文跳过
+        except Exception: pass
 
         # 检查预算告警
         total = self.get_workshop_daily_cost(workshop_id)

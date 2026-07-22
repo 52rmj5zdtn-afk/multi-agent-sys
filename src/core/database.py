@@ -18,6 +18,10 @@ logger = get_logger(__name__)
 class Base(DeclarativeBase):
     pass
 
+# 导入所有模型到 Base.metadata
+import src.data.models
+
+
 
 # 引擎 & 会话工厂
 _engine = None
@@ -41,7 +45,14 @@ def get_engine():
     if _engine is None:
         url = _get_database_url()
         logger.info(f"数据库引擎: {url[:50]}...")
-        _engine = create_async_engine(url, echo=False)
+        _engine = create_async_engine(
+            url,
+            echo=False,
+            pool_size=20,           # 连接池大小
+            max_overflow=10,        # 超出 pool_size 后的最大连接数
+            pool_recycle=3600,      # 连接回收时间 (秒)
+            pool_pre_ping=True,     # 每次使用前验证连接
+        )
     return _engine
 
 
@@ -77,6 +88,7 @@ async def init_db():
     else:
         # SQLite: 同步创建 (异步 SQLite 不支持 create_all)
         from pathlib import Path
+        import src.data.models as _models  # 注册所有 ORM 模型
         db_path = Path(__file__).parent.parent.parent / "data" / "manufacturing.db"
         sync_engine = create_engine(f"sqlite:///{db_path}")
         Base.metadata.create_all(sync_engine)

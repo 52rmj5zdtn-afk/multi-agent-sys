@@ -3,11 +3,14 @@ knowledge.py — 知识库管理接口
 ============================
 文档上传、列表、搜索测试、删除。
 """
+from pathlib import Path
+
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException
 
 from src.api.deps import get_hybrid_retriever
 from src.retrieval.embedding import get_embedding_service
 from src.retrieval.chunker import DocumentChunker
+from src.retrieval.ingestion import IngestionPipeline, IngestDocument, standard_ingest
 from src.api.schemas.response import APIResponse
 from src.core.logging import get_logger
 
@@ -22,7 +25,7 @@ async def upload_document(
     workshop_id: str = Form("workshop-a"),
     equipment_model: str = Form(""),
 ):
-    """上传文档: PDF/Word/Excel/TXT → 分块 → 嵌入 → 双索引。
+    """上传文档: PDF/Word/Excel/TXT/MD → 分块 → 嵌入 → 双索引。
 
     curl -X POST http://localhost:8000/api/v1/knowledge/upload \\
       -F "file=@manual.pdf" -F "doc_type=equipment_manual"
@@ -30,26 +33,11 @@ async def upload_document(
     if not file.filename:
         raise HTTPException(400, "文件名不能为空")
 
-    # 读取文件内容
     content = await file.read()
     ext = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else "txt"
 
-    # Phase 2: 纯文本/TXT, 后续接 PDF/Word 解析
-    text = ""
-    if ext in ("txt", "md", "csv"):
-        text = content.decode("utf-8", errors="replace")
-    else:
-        # 简单二进制文件跳过（后续接 unstructured 解析）
-        try:
-            text = content.decode("utf-8", errors="replace")
-        except Exception:
-            raise HTTPException(400, f"暂不支持 {ext} 格式，请上传 TXT/MD 文件")
-
-    if not text.strip():
-        raise HTTPException(400, "文件内容为空")
-
-    # 保存原始文件到 data/uploads/
-    import os, uuid
+    # 保存原始文件
+    import uuid
     from pathlib import Path
     upload_dir = Path(__file__).parent.parent.parent.parent / "data" / "uploads"
     upload_dir.mkdir(parents=True, exist_ok=True)
@@ -58,10 +46,30 @@ async def upload_document(
     saved_path = upload_dir / saved_name
     saved_path.write_bytes(content)
 
-    # 摄入管线
+    # 使用 IngestionPipeline 解析（支持 PDF/Word/Excel/TXT/MD）
+    text = ""
+    if ext in ("txt", "md", "csv"):
+        text = content.decode("utf-8", errors="replace")
+    else:
+        pipeline = IngestionPipeline()
+        doc = IngestDocument(
+            title=file.filename,
+            content="",
+            doc_type=doc_type,
+            doc_id=doc_id,
+            workshop_id=workshop_id,
+            equipment_model=equipment_model,
+            metadata={"file_path": str(saved_path)},
+        )
+        text = await pipeline._parse_content(doc)
+
+    if not text.strip():
+        raise HTTPException(400, "文件内容为空或解析失败")
+
+    # 分块 + 嵌入
     hybrid = get_hybrid_retriever()
     embed = get_embedding_service()
-    chunker = DocumentChunker()
+    chunker = DocumentChunker(chunk_size=256, chunk_overlap=32)
 
     chunks = chunker.chunk(text=text, title=file.filename, equipment_model=equipment_model)
     if not chunks:
@@ -82,7 +90,24 @@ async def upload_document(
         for i, (t, v) in enumerate(zip(texts, vecs))
     ])
 
-    logger.info(f"文档上传: {file.filename}, {len(chunks)} chunks → {saved_path}")
+    # 写入 documents 元数据表
+    try:
+        from src.core.database import get_session_factory
+        from src.data.models import Document
+        from datetime import datetime
+        factory = get_session_factory()
+        async with factory() as session:
+            session.add(Document(
+                doc_id=doc_id, title=file.filename, doc_type=doc_type,
+                workshop_id=workshop_id, equipment_model=equipment_model,
+                file_path=str(saved_path), chunk_count=len(chunks),
+                ingested_at=datetime.now().replace(microsecond=0), status="active",
+            ))
+            await session.commit()
+    except Exception as e:
+        logger.warning(f"文档元数据写入跳过: {e}")
+
+    logger.info(f"文档上传: {file.filename} ({ext}), {len(chunks)} chunks → {saved_path}")
     return APIResponse(data={
         "doc_id": doc_id, "filename": file.filename,
         "chunks": len(chunks), "doc_type": doc_type,
@@ -130,13 +155,42 @@ async def search_knowledge(query: str = "", workshop_id: str = "workshop-a", top
 
 @router.delete("/documents/{title}")
 async def delete_document(title: str):
-    """按标题删除文档 (从 BM25 + Dense 双索引中移除)。"""
+    """按标题删除文档 (从 BM25 + Dense + DB + 磁盘 全部移除)。"""
     hybrid = get_hybrid_retriever()
+
+    # 先从数据库获取文件路径
+    file_path = ""
+    try:
+        from src.core.database import get_session_factory
+        from src.data.models import Document
+        from sqlalchemy import select, delete as sql_delete
+        factory = get_session_factory()
+        async with factory() as session:
+            result = await session.execute(select(Document).where(Document.title == title))
+            doc = result.scalar_one_or_none()
+            if doc:
+                file_path = doc.file_path or ""
+            # 数据库删除
+            await session.execute(sql_delete(Document).where(Document.title == title))
+            await session.commit()
+    except Exception as e:
+        logger.warning(f"数据库删除跳过: {e}")
+
     # BM25 删除
     to_delete = [d["id"] for d in hybrid.bm25._corpus if d.get("title") == title]
     if to_delete:
         await hybrid.bm25.delete(to_delete)
     # Dense 删除
     await hybrid.dense.delete("mfg_general_knowledge", to_delete)
+
+    # 磁盘文件删除
+    if file_path:
+        try:
+            fp = Path(file_path)
+            if fp.exists():
+                fp.unlink()
+        except Exception as e:
+            logger.warning(f"文件删除跳过: {e}")
+
     logger.info(f"文档删除: {title}, {len(to_delete)} chunks")
     return APIResponse(data={"deleted": title, "chunks": len(to_delete)}).model_dump()

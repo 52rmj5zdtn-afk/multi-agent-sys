@@ -221,4 +221,9 @@ DEMO_USERS: dict[str, UserContext] = {
     "director_zhao": UserContext("director_zhao", UserRole.WORKSHOP_DIRECTOR, "workshop-a", "赵主任"),
     "engineer_chen": UserContext("engineer_chen", UserRole.PROCESS_ENGINEER, "workshop-a", "陈工(工艺)"),
     "manager_zhou": UserContext("manager_zhou", UserRole.PLANT_MANAGER, "", "周厂长"),
+
+    # B车间用户
+    "worker_sun": UserContext("worker_sun", UserRole.WORKER, "workshop-b", "孙工(产线-B)"),
+    "maintainer_huang": UserContext("maintainer_huang", UserRole.MAINTAINER, "workshop-b", "黄工(维修-B)"),
+    "shift_lead_liu": UserContext("shift_lead_liu", UserRole.SHIFT_LEAD, "workshop-b", "刘班长(B)"),
 }

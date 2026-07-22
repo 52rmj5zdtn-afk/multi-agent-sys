@@ -77,6 +77,33 @@ KNOWLEDGE_SYSTEM_PROMPT = """你是一个制造业生产运维知识助手，为
 """
 
 
+# 不需要RAG检索的查询类型（闲聊/自我介绍/简单确认）
+_SKIP_RAG_PATTERNS = [
+    "你好", "谢谢", "你是谁", "能做什么", "介绍一下", "再见", "在吗",
+    "怎么样", "好用吗", "快吗", "帮我写", "翻译", "计算",
+]
+_SKIP_RAG_PREFIXES = ["你好", "谢谢", "你是谁", "你能", "你会", "再见", "在吗"]
+
+
+def should_skip_rag(query: str) -> bool:
+    """判断查询是否需要走RAG检索。
+    简单闲聊、自我介绍等问题不需要检索文档，直接LLM回答即可。
+
+    返回 True 表示跳过RAG，False 表示正常走检索。
+    """
+    q = query.strip().lower()
+    # 短查询（<5字）且匹配闲聊模式
+    if len(q) < 10:
+        for kw in _SKIP_RAG_PATTERNS:
+            if kw in q:
+                return True
+    # 前缀匹配
+    for prefix in _SKIP_RAG_PREFIXES:
+        if q.startswith(prefix):
+            return True
+    return False
+
+
 def build_prompt(
     query: str,
     retrieved_context: str,
@@ -184,39 +211,40 @@ def create_knowledge_node(ctx: KnowledgeNodeContext):
         # 2. 获取会话历史
         history = await ctx.session_memory.get_context(session_id, as_llm_format=True)
 
-        # 3. 混合检索 (主知识库)
-        try:
-            search_results = await ctx.hybrid_retriever.search(
-                query=query,
-                workshop_id=workshop_id,
-                top_k=10,
-                include_sop=True,
-                include_cases=False,
-            )
-        except Exception as e:
-            logger.error(f"检索失败: {e}")
-            search_results = []
+        # 2.5 判断是否需要RAG检索 (闲聊/简单问答跳过)
+        skip_rag = should_skip_rag(query)
+        if skip_rag:
+            logger.info(f"Knowledge Node: 跳过RAG (闲聊/简单问答)")
 
-        # 3.5 Phase 3: 长期记忆召回 (类似故障经验)
+        # 3. 混合检索 (主知识库) — 简单问答跳过
+        search_results = []
         case_context = ""
-        try:
-            from src.memory.persistent import get_long_term_memory
-            ltm = get_long_term_memory()
-            case_hits = await ltm.recall(
-                query_text=query, workshop_id=workshop_id, top_k=5,
-            )
-            if case_hits:
-                case_lines = []
-                for i, h in enumerate(case_hits):
-                    verified_mark = "已验证" if h.verified else "待验证"
-                    case_lines.append(
-                        f"[历史案例{i+1} - {verified_mark}] 设备:{h.equipment_model} 故障码:{h.fault_code}\n"
-                        f"问题: {h.query}\n解决方案: {h.answer_summary}"
-                    )
-                case_context = "\n\n".join(case_lines)
-                logger.info(f"长期记忆召回: {len(case_hits)} 条")
-        except Exception as e:
-            logger.warning(f"长期记忆召回跳过: {e}")
+        if not skip_rag:
+            try:
+                search_results = await ctx.hybrid_retriever.search(
+                    query=query, workshop_id=workshop_id, top_k=10,
+                    include_sop=True, include_cases=False,
+                )
+            except Exception as e:
+                logger.error(f"检索失败: {e}")
+
+            # 3.5 Phase 3: 长期记忆召回
+            try:
+                from src.memory.persistent import get_long_term_memory
+                ltm = get_long_term_memory()
+                case_hits = await ltm.recall(query_text=query, workshop_id=workshop_id, top_k=5)
+                if case_hits:
+                    case_lines = []
+                    for i, h in enumerate(case_hits):
+                        verified_mark = "已验证" if h.verified else "待验证"
+                        case_lines.append(
+                            f"[历史案例{i+1} - {verified_mark}] 设备:{h.equipment_model} 故障码:{h.fault_code}\n"
+                            f"问题: {h.query}\n解决方案: {h.answer_summary}"
+                        )
+                    case_context = "\n\n".join(case_lines)
+                    logger.info(f"长期记忆召回: {len(case_hits)} 条")
+            except Exception as e:
+                logger.warning(f"长期记忆召回跳过: {e}")
 
         # 4. 提取检索文本 + 清洗 (防第三方文档注入)
         retrieved_chunks = [r["content"] for r in search_results]
@@ -257,19 +285,30 @@ def create_knowledge_node(ctx: KnowledgeNodeContext):
             conversation_history=history,
         )
 
-        try:
-            result = await fallback_chain.chat_with_fallback(
-                messages=messages,
-                complexity=TaskComplexity.COMPLEX if len(query) > 50 else TaskComplexity.SIMPLE,
-                query=query,
-            )
-        except Exception as e:
-            logger.error(f"LLM 调用失败: {e}")
-            return {
-                "agent_outputs": {"knowledge": f"系统暂时无法处理您的请求，请稍后重试或联系维修热线。\n问题: {query}"},
-                "errors": [str(e)],
-                "citations": [],
-            }
+        # Phase 3: LLM 并发管控 — 排队等待槽位
+        from src.model.concurrency import llm_limiter
+        from src.model.router import ModelResult
+        async with llm_limiter.acquire(user_id=user_id, timeout=45) as slot:
+            if slot is None:
+                # 排队超时 → 不调 LLM，直接返回降级
+                result = ModelResult(
+                    content=f"系统繁忙，请稍后重试。\n\n问题: {query}",
+                    model="queue_timeout", fallback_used=True,
+                )
+            else:
+                try:
+                    result = await fallback_chain.chat_with_fallback(
+                        messages=messages,
+                        complexity=TaskComplexity.COMPLEX if len(query) > 50 else TaskComplexity.SIMPLE,
+                        query=query,
+                    )
+                except Exception as e:
+                    logger.error(f"LLM 调用失败: {e}")
+                    return {
+                        "agent_outputs": {"knowledge": f"系统暂时无法处理您的请求，请稍后重试或联系维修热线。\n问题: {query}"},
+                        "errors": [str(e)],
+                        "citations": [],
+                    }
 
         # 8. 输出脱敏
         final_answer = sanitize_output(result.content, user_can_see_cost=can_see_cost)
@@ -282,7 +321,7 @@ def create_knowledge_node(ctx: KnowledgeNodeContext):
             workshop_id=workshop_id,
         )
 
-        # 10. 记录成本
+        # 10. 记录成本 + 可观测指标
         usage = TokenUsage(
             prompt_tokens=result.prompt_tokens,
             completion_tokens=result.completion_tokens,
@@ -290,14 +329,19 @@ def create_knowledge_node(ctx: KnowledgeNodeContext):
         )
         budget_tracker.record(workshop_id, "knowledge", result.model, usage)
 
-        # 11. 存会话记忆
-        await ctx.session_memory.add_message(session_id, {"role": "user", "content": query})
+        # Phase 4: 记录 Prometheus 指标
+        from src.observability.metrics import record_llm
+        record_llm(result.model, "knowledge", result.prompt_tokens, result.completion_tokens)
+
+        # 11. 存会话记忆 (Phase 3: 绑 user_id)
+        user_id_val = user.user_id if user else ""
+        await ctx.session_memory.add_message(session_id, {"role": "user", "content": query}, user_id=user_id_val)
         await ctx.session_memory.add_message(session_id, {
             "role": "assistant",
             "content": final_answer,
             "citations": citations,
             "model": result.model,
-        })
+        }, user_id=user_id_val)
 
         latency = (time.time() - t0) * 1000
         logger.info(f"Knowledge Node 完成: model={result.model}, latency={latency:.0f}ms, tokens={result.prompt_tokens}+{result.completion_tokens}")
