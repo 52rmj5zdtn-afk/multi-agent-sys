@@ -2,6 +2,40 @@
 
 基于 LangGraph 多 Agent 架构的锂电池模组产线运维 AI 助手，覆盖电芯上料 / 模组堆叠 / 激光焊接（侧缝焊 & Busbar 焊）/ 涂胶 / EOL 测试等新能源模组线核心工序（产线实例：巢湖三拉环线，西门子 S7-1500 SICAR 标准程序）。
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+[![评测通过率](https://img.shields.io/badge/评测通过率-92.1%25-brightgreen)](./evaluation/report.json)
+[![测试](https://img.shields.io/badge/tests-44%20passed%2C%200%20failed-brightgreen)](./tests)
+
+## 项目亮点（速览）
+
+**一句话**：面向锂电池模组产线的多 Agent 运维 AI 系统，LLM 编排 + 检索增强 + 机器学习双线落地（RUL 预测性维护、焊缝视觉质检），打通「设备报警 → 根因诊断 → SOP 匹配 → 排程评估 → 工单执行 → 视觉质检 → OEE 报表 → 知识沉淀」业务全闭环，并经 OPC UA → MQTT 链路接入真实产线数据。
+
+| 维度 | 亮点 |
+|------|------|
+| 多智能体 | LangGraph 图状态机编排 8 个专业 Agent（诊断 / 知识 / 排程 / 质检 / 巡检 / 报表 / 视觉 / 预测维护），Guard 注入防护 → Router 意图路由（含 ML 节点调度）→ 并行执行 → Aggregate 聚合 → Checkpoint 持久化 |
+| 检索增强（RAG） | BM25 + Milvus 向量双路混合检索，RRF 融合 + BGE-Reranker 重排；按查询类型动态调权（报警码 0.7 / 混合 0.5:0.5 / 语义 0.7）；支持 PDF / Word / Excel 摄入与语义分块 |
+| 预测性维护 | LSTM RUL 预测（C-MAPSS 标准数据集演示 + 虚焊预警领域模型，4 台焊接设备各一 checkpoint）；遥测经设备台账翻译为健康分 / 剩余天数，低于阈值**自动创建部件级预防性维修工单** |
+| 视觉质检 | anomalib Padim / PatchCore 无监督异常检测，2D 外观 + 3D 深度图双通道并含几何测量；AI 判定 NG 必经人工复核（全程留痕），误报率按产品反哺阈值校准 |
+| 工业数据链路 | 西门子 S7-1500（SICAR）OPC UA 加密采集（Basic256Sha256 证书互信）→ MQTT QoS1 → 遥测管线；断线 SQLite 补传、按 (device, cycle) 幂等去重、卡死传感器整批拒绝；标签映射表即 PLC 程序与 AI 链路的**接口契约**，仿真切真机零改动 |
+| 高可用 | 多模型路由（qwen-turbo / deepseek-chat 按任务复杂度分流）+ 熔断器（连续 5 次失败熔断 30s，半开探测恢复）+ 规则引擎兜底 + Ollama 离线兜底；ML 服务不可达自动降级、可无损回滚纯 LLM 模式 |
+| 安全合规 | Prompt 注入检测（正则 + 关键词 + 模式匹配）、6 角色 RBAC 车间级数据隔离、JWT + bcrypt、输出脱敏、全量审计日志、IP + 用户双重限流 |
+
+**量化评测**（164 用例全量实测，2026-11-17，详见 `evaluation/report.json`）：
+
+| 评测集 | 结果 |
+|--------|------|
+| 故障诊断 | 30/30（100%） |
+| 报警场景 | 28/30（93%） |
+| SOP 问答 | 43/50（86%） |
+| Prompt 注入检测 | 23/25（92%） |
+| RBAC 权限控制 | 12/12（100%） |
+| 安全防护 | 10/10（100%） |
+| 预测性维护 | 4/4（100%） |
+| 视觉质检（2D / 3D 双模型实测） | 3/3（100%） |
+| **总计** | **151/164（92.1%）** |
+
+单元 / 集成测试 **44 passed / 0 failed**（1 skipped，PLC 离线环境）。
+
 ## 业务闭环
 
 ```
