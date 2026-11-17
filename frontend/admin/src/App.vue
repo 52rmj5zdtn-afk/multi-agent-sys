@@ -54,7 +54,7 @@
                 </el-select>
               </el-form-item>
               <el-form-item label="关联设备">
-                <el-input v-model="uploadModel" placeholder="如: 海天MA1200" style="width:200px" />
+                <el-input v-model="uploadModel" placeholder="如: TRUMPF-LW-301" style="width:200px" />
               </el-form-item>
               <el-form-item v-if="uploadFiles.length">
                 <el-button type="success" @click="doUpload" :loading="uploading">

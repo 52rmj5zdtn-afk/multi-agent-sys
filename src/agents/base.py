@@ -109,7 +109,7 @@ class BaseAgent(ABC):
         Phase 2: 走 MCP 协议
 
         示例:
-            result = await agent.call_tool("search_knowledge", query="料筒温度异常", top_k=5)
+            result = await agent.call_tool("search_knowledge", query="激光功率衰减报警", top_k=5)
         """
         tool = self._tools.get(tool_name)
         if not tool:
@@ -118,7 +118,7 @@ class BaseAgent(ABC):
         if tool.handler is None:
             raise ValueError(f"工具 {tool_name} 没有绑定的 handler")
 
-        # TODO Phase 2: 加沙箱校验 (速率限制、参数校验、资源限制)
+        # 后续迭代: 加沙箱校验 (速率限制、参数校验、资源限制)
         return await tool.handler(**kwargs)
 
     @abstractmethod

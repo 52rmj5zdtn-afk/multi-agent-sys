@@ -1,0 +1,5 @@
+[
+  {"id":"V001","category":"vision","equipment":"bottle","difficulty":"easy","query":"帮看一下这个产品外观有没有缺陷","expected_keywords":["视觉","异常分数"],"min_len":20,"needs_image":true},
+  {"id":"V002","category":"vision","equipment":"bottle","difficulty":"easy","query":"这批产品质检结果如何，能放行吗","expected_keywords":["NG","OK","处置"],"min_len":20,"needs_image":true},
+  {"id":"V003","category":"vision","equipment":"bottle","difficulty":"medium","query":"检测一下这张图片，如果 NG 请给出处置建议并开工单","expected_keywords":["工单","异常分数"],"min_len":20,"needs_image":true}
+]

@@ -33,6 +33,7 @@ dependencies = [
     "FlagEmbedding>=1.2.0",
     # Database / Cache
     "asyncpg>=0.29.0",
+    "aiosqlite>=0.20.0",
     "redis>=5.0.0",
     "sqlalchemy[asyncio]>=2.0.25",
     # Async / Queue
@@ -71,3 +72,5 @@ dev = [
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+# 测试专用：进程内 MQTT broker（amqtt），仅集成测试使用

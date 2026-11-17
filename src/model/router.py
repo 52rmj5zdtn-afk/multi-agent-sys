@@ -13,7 +13,7 @@ router.py — 多模型路由
 
 使用示例:
     from src.model.router import router
-    result = await router.chat(messages=[{"role":"user","content":"怎么换模具"}])
+    result = await router.chat(messages=[{"role":"user","content":"怎么换工装"}])
     print(result.content)
 
 注意事项:
@@ -59,20 +59,35 @@ class ModelRouter:
     def _get_client(self, model: str) -> AsyncOpenAI:
         if model not in self._clients:
             settings = get_settings()
-            if "deepseek" in model:
+            if ("kimi" in model or "moonshot" in model
+                    or model in ("k3", "k3-256k", "k3.1-pro", "k3.1-pro-highspeed",
+                                 "kimi-for-coding", "kimi-for-coding-highspeed")):
                 client = AsyncOpenAI(
-                    api_key=settings.deepseek_api_key,
-                    base_url=settings.deepseek_base_url,
+                    api_key=settings.kimi_api_key,
+                    base_url=settings.kimi_base_url,
                 )
             elif "qwen" in model:
                 client = AsyncOpenAI(
                     api_key=settings.qwen_api_key,
                     base_url=settings.qwen_base_url,
                 )
-            else:
+            elif "deepseek" in model:
                 client = AsyncOpenAI(
                     api_key=settings.deepseek_api_key,
                     base_url=settings.deepseek_base_url,
+                )
+            elif settings.offline_enabled and (
+                model == settings.offline_llm_model or "ollama" in model
+            ):
+                # 本地 Ollama（OpenAI 兼容端点），走离线降级通道
+                client = AsyncOpenAI(
+                    api_key=settings.ollama_api_key,
+                    base_url=settings.offline_llm_base_url or settings.ollama_base_url,
+                )
+            else:
+                client = AsyncOpenAI(
+                    api_key=settings.qwen_api_key,
+                    base_url=settings.qwen_base_url,
                 )
             self._clients[model] = client
         return self._clients[model]
@@ -101,6 +116,12 @@ class ModelRouter:
             return settings.complex_task_model
         return settings.default_model
 
+    def _clamp_temperature(self, model: str, temperature: float) -> float:
+        """Kimi 推理模型（k3/k3.1/k2.6）仅允许 temperature=1，其余模型保持传入值。"""
+        if any(k in model for k in ("kimi-k3", "kimi-k2.6", "k3", "k3.1-pro", "deepseek-reasoner")):
+            return 1.0
+        return temperature
+
     async def chat(
         self,
         messages: list[dict],
@@ -112,6 +133,7 @@ class ModelRouter:
         """调用 LLM, 返回统一结果。"""
         model = model or get_settings().default_model
         client = self._get_client(model)
+        temperature = self._clamp_temperature(model, temperature)
 
         t0 = time.time()
         response = await client.chat.completions.create(
@@ -142,6 +164,7 @@ class ModelRouter:
         """流式调用，逐 chunk yield 文本。"""
         model = model or get_settings().default_model
         client = self._get_client(model)
+        temperature = self._clamp_temperature(model, temperature)
 
         stream = await client.chat.completions.create(
             model=model,

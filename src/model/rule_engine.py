@@ -7,9 +7,9 @@ LLM 不可用时降级到规则库。报警码 → SOP 精确匹配，全程不�
 
 用法:
     from src.model.rule_engine import match_rule
-    result = match_rule("HT-E-0021")
+    result = match_rule("LW-E-0021")
     if result:
-        print(result)  # "HT-E-0021: 料筒温度传感器异常。处理步骤: 1.检查温控器..."
+        print(result)  # "LW-E-0021: 激光功率传感器异常。处理步骤: 1.检查温控器..."
 """
 
 import json
@@ -39,8 +39,8 @@ def match_rule(query: str) -> str | None:
     返回: 格式化的SOP文本，或 None
 
     示例:
-        >>> match_rule("HT-E-0021报警怎么处理")
-        "HT-E-0021 (P1): 料筒温度传感器异常\n处理步骤:\n1. 检查温控器接线..."
+        >>> match_rule("LW-E-0021报警怎么处理")
+        "LW-E-0021 (P1): 激光功率传感器异常\n处理步骤:\n1. 检查温控器接线..."
     """
     rules = _load_rules()
     query_upper = query.upper()

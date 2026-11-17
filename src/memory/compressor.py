@@ -109,15 +109,15 @@ class ContextCompressor:
             msgs = [
                 {"role": "user", "content": "HA-003报警了"},
                 {"role": "assistant", "content": "好的，什么报警？"},
-                {"role": "user", "content": "料筒温度异常，报警码HT-E-0021"},
-                {"role": "assistant", "content": "收到，根据SOP-HA-12，步骤1: 关闭加热..."},
+                {"role": "user", "content": "激光功率衰减报警，报警码LW-E-0021"},
+                {"role": "assistant", "content": "收到，根据SOP-LW-12，步骤1: 关闭加热..."},
             ]
             summary = compressor._extract_key_info(msgs)
-            # "设备HA-003, 报警码HT-E-0021, 料筒温度异常, 维修参考SOP-HA-12"
+            # "设备HA-003, 报警码LW-E-0021, 激光功率衰减报警, 维修参考SOP-LW-12"
         """
         key_parts = []
         # 设备型号
-        model_pattern = re.compile(r'(HA-\w+|MA\d+|CNC-\w+|[A-Z]{2,}-\w{3,})', re.IGNORECASE)
+        model_pattern = re.compile(r'(LW-\w+|ST-\w+|GL-\w+|ET-\w+|[A-Z]{2,}-\w{3,})', re.IGNORECASE)
         # 报警码
         alarm_pattern = re.compile(r'[A-Z]{2,}-\w{3,}')
 
@@ -166,7 +166,7 @@ class ContextCompressor:
             msgs = [m1, m2, m3, ..., m20]
             compressed = await compressor.compress(msgs, 32000, retain_recent=4)
             # compressed = [
-            #   {"role": "system", "content": "[历史摘要] 设备HA-003, 报警码HT-E-0021..."},
+            #   {"role": "system", "content": "[历史摘要] 设备HA-003, 报警码LW-E-0021..."},
             #   m17, m18, m19, m20
             # ]
         """

@@ -117,7 +117,7 @@ class BGEReranker:
         示例:
             reranker = BGEReranker()
             results = await reranker.rerank(
-                query="料筒温度异常",
+                query="激光功率衰减报警",
                 candidates=[{"id":"c1","content":"...","score":0.85,"source":"dense"}, ...],
                 top_k=5,
             )

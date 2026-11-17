@@ -1,52 +1,517 @@
 [
-  {"id":"S001","category":"mold_change","query":"注塑机换模具的完整步骤是什么","expected_steps":6,"min_steps":4,"expected_docs":["换模作业指导书","操作手册"]},
-  {"id":"S002","category":"mold_change","query":"换模前需要做哪些准备工作","expected_steps":4,"min_steps":3,"expected_docs":["换模作业指导书"]},
-  {"id":"S003","category":"mold_change","query":"拆模的时候要注意什么安全事项","expected_steps":3,"min_steps":2,"expected_docs":["换模作业指导书"],"must_have_safety":true},
-  {"id":"S004","category":"mold_change","query":"新模具装上去后需要做什么测试","expected_steps":3,"min_steps":2,"expected_docs":["操作手册","换模作业指导书"]},
-  {"id":"S005","category":"inspection","query":"每天设备点检需要检查哪些项目","expected_steps":10,"min_steps":5,"expected_docs":["点检标准"]},
-  {"id":"S006","category":"inspection","query":"注塑机开机前要检查什么","expected_steps":5,"min_steps":3,"expected_docs":["操作手册"]},
-  {"id":"S007","category":"inspection","query":"CNC加工中心开机流程是什么","expected_steps":5,"min_steps":3,"expected_docs":["CNC操作手册"]},
-  {"id":"S008","category":"inspection","query":"冲压线开机前安全检查有哪些","expected_steps":5,"min_steps":3,"expected_docs":["冲压线安全操作规程"],"must_have_safety":true},
-  {"id":"S009","category":"maintenance","query":"模具保养需要做什么，多久做一次","expected_steps":6,"min_steps":3,"expected_docs":["模具保养与维修规程"]},
-  {"id":"S010","category":"maintenance","query":"注塑机定期保养的内容和周期","expected_steps":4,"min_steps":2,"expected_docs":["操作手册"]},
-  {"id":"S011","category":"maintenance","query":"设备维修后需要记录哪些信息","expected_steps":12,"min_steps":5,"expected_docs":["维修记录模板"]},
-  {"id":"S012","category":"maintenance","query":"模具飞边怎么处理","expected_steps":4,"min_steps":2,"expected_docs":["模具保养与维修规程"]},
-  {"id":"S013","category":"maintenance","query":"冲压模具刃口磨损了怎么处理","expected_steps":3,"min_steps":2,"expected_docs":["冲压件缺陷及处理"]},
-  {"id":"S014","category":"safety","query":"新员工进车间要注意哪些安全事项","expected_steps":7,"min_steps":4,"expected_docs":["安全培训大纲"],"must_have_safety":true},
-  {"id":"S015","category":"safety","query":"车间着火了正确的应急流程","expected_steps":4,"min_steps":3,"expected_docs":["安全培训大纲"]},
-  {"id":"S016","category":"safety","query":"冲压线操作的个人防护要求","expected_steps":4,"min_steps":2,"expected_docs":["冲压线安全操作规程"]},
-  {"id":"S017","category":"safety","query":"电气维修需要注意什么安全事项","expected_steps":5,"min_steps":3,"expected_docs":["安全培训大纲","电气安全规范"],"must_have_safety":true},
-  {"id":"S018","category":"safety","query":"车间6S管理标准是什么","expected_steps":6,"min_steps":3,"expected_docs":["6S管理标准"]},
-  {"id":"S019","category":"operation","query":"注塑机怎么开机","expected_steps":5,"min_steps":3,"expected_docs":["操作手册"]},
-  {"id":"S020","category":"operation","query":"CNC暖机要怎么做","expected_steps":3,"min_steps":2,"expected_docs":["CNC操作手册"]},
-  {"id":"S021","category":"operation","query":"SMT贴片机操作规程","expected_steps":4,"min_steps":2,"expected_docs":["SMT贴片机操作规程"]},
-  {"id":"S022","category":"operation","query":"装配线怎么开机","expected_steps":5,"min_steps":3,"expected_docs":["装配线操作手册"]},
-  {"id":"S023","category":"quality","query":"注塑件缩水怎么调工艺","expected_steps":5,"min_steps":3,"expected_docs":["缺陷及处理","工艺参数优化指南"]},
-  {"id":"S024","category":"quality","query":"注塑件飞边太严重怎么处理","expected_steps":5,"min_steps":3,"expected_docs":["缺陷及处理","工艺参数优化指南"]},
-  {"id":"S025","category":"quality","query":"冲压件拉裂了怎么办","expected_steps":4,"min_steps":2,"expected_docs":["冲压件缺陷及处理"]},
-  {"id":"S026","category":"quality","query":"冲压件起皱怎么调整","expected_steps":4,"min_steps":2,"expected_docs":["冲压件缺陷及处理"]},
-  {"id":"S027","category":"quality","query":"注塑件熔接痕怎么改善","expected_steps":3,"min_steps":2,"expected_docs":["工艺参数优化指南"]},
-  {"id":"S028","category":"quality","query":"注塑银纹料花是什么原因","expected_steps":4,"min_steps":2,"expected_docs":["工艺参数优化指南"]},
-  {"id":"S029","category":"parameter","query":"ABS注塑的料筒温度和模具温度是多少","expected_steps":1,"min_steps":1,"expected_docs":["工艺参数优化指南"]},
-  {"id":"S030","category":"parameter","query":"PP注塑的压力参数怎么设置","expected_steps":1,"min_steps":1,"expected_docs":["工艺参数优化指南"]},
-  {"id":"S031","category":"parameter","query":"45钢钻孔用什么转速","expected_steps":1,"min_steps":1,"expected_docs":["切削参数参考表"]},
-  {"id":"S032","category":"parameter","query":"铝合金6061精铣切削速度","expected_steps":1,"min_steps":1,"expected_docs":["切削参数参考表"]},
-  {"id":"S033","category":"scheduling","query":"注塑线设备保养日怎么安排排程","expected_steps":2,"min_steps":1,"expected_docs":["排程计划"]},
-  {"id":"S034","category":"scheduling","query":"这周哪些产线需要保养","expected_steps":2,"min_steps":1,"expected_docs":["排程计划"]},
-  {"id":"S035","category":"report","query":"本月OEE数据","expected_steps":1,"min_steps":1,"expected_docs":["月度生产报表"]},
-  {"id":"S036","category":"report","query":"各产线良率对比","expected_steps":1,"min_steps":1,"expected_docs":["月度生产报表"]},
-  {"id":"S037","category":"inspection","query":"今天巡检发现哪些异常","expected_steps":4,"min_steps":2,"expected_docs":["巡检计划与异常记录"]},
-  {"id":"S038","category":"inspection","query":"最近CNC设备有什么问题","expected_steps":2,"min_steps":1,"expected_docs":["设备运行状态","巡检异常记录"]},
-  {"id":"S039","category":"quality","query":"注塑不良率偏高怎么改善","expected_steps":4,"min_steps":2,"expected_docs":["月度生产报表","工艺参数优化指南"]},
-  {"id":"S040","category":"maintenance","query":"模具长期存放要注意什么","expected_steps":4,"min_steps":2,"expected_docs":["模具保养与维修规程"]},
-  {"id":"S041","category":"safety","query":"B车间电气安全有哪些要求","expected_steps":5,"min_steps":3,"expected_docs":["B车间电气安全规范"]},
-  {"id":"S042","category":"quality","query":"B车间电子组装质量抽检标准","expected_steps":3,"min_steps":1,"expected_docs":["B车间质量检验标准"]},
-  {"id":"S043","category":"maintenance","query":"B车间设备周保养要做哪些","expected_steps":5,"min_steps":3,"expected_docs":["B车间设备维护保养计划"]},
-  {"id":"S044","category":"maintenance","query":"B车间年度保养做什么","expected_steps":5,"min_steps":3,"expected_docs":["B车间设备维护保养计划"]},
-  {"id":"S045","category":"operation","query":"装配线螺丝锁付报警AB-E-001怎么处理","expected_steps":3,"min_steps":2,"expected_docs":["操作手册"]},
-  {"id":"S046","category":"operation","query":"SMT贴片机抛料率高怎么排查","expected_steps":3,"min_steps":2,"expected_docs":["SMT操作规程"]},
-  {"id":"S047","category":"safety","query":"触电事故的应急处理流程","expected_steps":5,"min_steps":3,"expected_docs":["电气安全规范","安全培训大纲"]},
-  {"id":"S048","category":"quality","query":"B车间虚焊不良怎么改善","expected_steps":3,"min_steps":2,"expected_docs":["B车间质量检验标准"]},
-  {"id":"S049","category":"quality","query":"B车间桥连不良怎么处理","expected_steps":3,"min_steps":2,"expected_docs":["B车间质量检验标准"]},
-  {"id":"S050","category":"scheduling","query":"CNC线周末能加班吗","expected_steps":1,"min_steps":1,"expected_docs":["排程计划"]}
+ {
+  "id": "S001",
+  "category": "changeover",
+  "query": "激光焊机换型工装的具体步骤是什么",
+  "expected_steps": 7,
+  "min_steps": 5,
+  "expected_docs": [
+   "换型工装作业指导书",
+   "操作手册"
+  ]
+ },
+ {
+  "id": "S002",
+  "category": "changeover",
+  "query": "LW-301从355模组换型280模组要经过哪些步骤",
+  "expected_steps": 7,
+  "min_steps": 5,
+  "expected_docs": [
+   "换型工装作业指导书"
+  ]
+ },
+ {
+  "id": "S003",
+  "category": "changeover",
+  "query": "换型工装的步骤和注意事项",
+  "expected_steps": 7,
+  "min_steps": 5,
+  "expected_docs": [
+   "换型工装作业指导书",
+   "安全操作规程"
+  ]
+ },
+ {
+  "id": "S004",
+  "category": "changeover",
+  "query": "换型时为什么要千分表打表，平面度要求多少",
+  "expected_steps": 7,
+  "min_steps": 4,
+  "expected_docs": [
+   "换型工装作业指导书"
+  ]
+ },
+ {
+  "id": "S005",
+  "category": "changeover",
+  "query": "换型作业的安全警告有哪些",
+  "expected_steps": 7,
+  "min_steps": 4,
+  "expected_docs": [
+   "换型工装作业指导书",
+   "安全操作规程"
+  ]
+ },
+ {
+  "id": "S006",
+  "category": "changeover",
+  "query": "换型后首件要做哪些确认",
+  "expected_steps": 7,
+  "min_steps": 5,
+  "expected_docs": [
+   "换型工装作业指导书",
+   "焊缝常见缺陷"
+  ]
+ },
+ {
+  "id": "S007",
+  "category": "changeover",
+  "query": "换型螺栓力矩多少，怎么紧固",
+  "expected_steps": 7,
+  "min_steps": 4,
+  "expected_docs": [
+   "换型工装作业指导书"
+  ]
+ },
+ {
+  "id": "S008",
+  "category": "maintenance",
+  "query": "保护镜更换的步骤是什么",
+  "expected_steps": 6,
+  "min_steps": 4,
+  "expected_docs": [
+   "激光器保养与保护镜更换规程"
+  ]
+ },
+ {
+  "id": "S009",
+  "category": "maintenance",
+  "query": "更换保护镜为什么要戴无尘手套",
+  "expected_steps": 6,
+  "min_steps": 4,
+  "expected_docs": [
+   "激光器保养与保护镜更换规程"
+  ]
+ },
+ {
+  "id": "S010",
+  "category": "maintenance",
+  "query": "保护镜压圈力矩多少，过紧会怎样",
+  "expected_steps": 6,
+  "min_steps": 4,
+  "expected_docs": [
+   "激光器保养与保护镜更换规程"
+  ]
+ },
+ {
+  "id": "S011",
+  "category": "maintenance",
+  "query": "保护镜多久检查一次，什么情况下必须换",
+  "expected_steps": 6,
+  "min_steps": 4,
+  "expected_docs": [
+   "激光器保养与保护镜更换规程"
+  ]
+ },
+ {
+  "id": "S012",
+  "category": "repair",
+  "query": "模组线激光焊接虚焊故障处理流程是什么",
+  "expected_steps": 8,
+  "min_steps": 6,
+  "expected_docs": [
+   "虚焊故障处理SOP"
+  ]
+ },
+ {
+  "id": "S013",
+  "category": "repair",
+  "query": "SOP-LW-07虚焊处理有哪些可能原因",
+  "expected_steps": 8,
+  "min_steps": 6,
+  "expected_docs": [
+   "虚焊故障处理SOP"
+  ]
+ },
+ {
+  "id": "S014",
+  "category": "repair",
+  "query": "虚焊处理的安全警告是什么",
+  "expected_steps": 8,
+  "min_steps": 5,
+  "expected_docs": [
+   "虚焊故障处理SOP",
+   "安全操作规程"
+  ]
+ },
+ {
+  "id": "S015",
+  "category": "repair",
+  "query": "振镜偏移量超过多少需要停机校准",
+  "expected_steps": 8,
+  "min_steps": 5,
+  "expected_docs": [
+   "虚焊故障处理SOP"
+  ]
+ },
+ {
+  "id": "S016",
+  "category": "repair",
+  "query": "泵浦二极管更换周期是多少小时",
+  "expected_steps": 8,
+  "min_steps": 5,
+  "expected_docs": [
+   "虚焊故障处理SOP",
+   "激光器保养与保护镜更换规程"
+  ]
+ },
+ {
+  "id": "S017",
+  "category": "repair",
+  "query": "冷却水进出水温差正常范围多少，超过多少要查水泵",
+  "expected_steps": 8,
+  "min_steps": 5,
+  "expected_docs": [
+   "虚焊故障处理SOP"
+  ]
+ },
+ {
+  "id": "S018",
+  "category": "repair",
+  "query": "处理虚焊后怎么确认修复效果",
+  "expected_steps": 8,
+  "min_steps": 5,
+  "expected_docs": [
+   "虚焊故障处理SOP",
+   "焊缝常见缺陷"
+  ]
+ },
+ {
+  "id": "S019",
+  "category": "inspection",
+  "query": "激光焊机每日开班前要点检哪些项目",
+  "expected_steps": 6,
+  "min_steps": 5,
+  "expected_docs": [
+   "设备点检标准（每日）"
+  ]
+ },
+ {
+  "id": "S020",
+  "category": "inspection",
+  "query": "点检发现安全项不合格怎么办",
+  "expected_steps": 6,
+  "min_steps": 4,
+  "expected_docs": [
+   "设备点检标准（每日）",
+   "安全操作规程"
+  ]
+ },
+ {
+  "id": "S021",
+  "category": "inspection",
+  "query": "堆叠机点检有哪些项目",
+  "expected_steps": 6,
+  "min_steps": 4,
+  "expected_docs": [
+   "设备点检标准（每日）"
+  ]
+ },
+ {
+  "id": "S022",
+  "category": "inspection",
+  "query": "EOL测试台每日首件校验用什么，偏差要求多少",
+  "expected_steps": 6,
+  "min_steps": 4,
+  "expected_docs": [
+   "设备点检标准（每日）"
+  ]
+ },
+ {
+  "id": "S023",
+  "category": "inspection",
+  "query": "点检异常怎么上报",
+  "expected_steps": 6,
+  "min_steps": 4,
+  "expected_docs": [
+   "设备点检标准（每日）"
+  ]
+ },
+ {
+  "id": "S024",
+  "category": "safety",
+  "query": "激光区作业为什么要戴OD6+防护眼镜",
+  "expected_steps": 10,
+  "min_steps": 6,
+  "expected_docs": [
+   "安全操作规程",
+   "新员工入职安全培训"
+  ]
+ },
+ {
+  "id": "S025",
+  "category": "safety",
+  "query": "锂电产线安全十条铁律是什么",
+  "expected_steps": 10,
+  "min_steps": 8,
+  "expected_docs": [
+   "新员工入职安全培训"
+  ]
+ },
+ {
+  "id": "S026",
+  "category": "safety",
+  "query": "电解液泄漏应该怎么处理",
+  "expected_steps": 10,
+  "min_steps": 6,
+  "expected_docs": [
+   "安全操作规程",
+   "新员工入职安全培训"
+  ]
+ },
+ {
+  "id": "S027",
+  "category": "safety",
+  "query": "进入机器人围栏作业要注意什么",
+  "expected_steps": 10,
+  "min_steps": 6,
+  "expected_docs": [
+   "安全操作规程"
+  ]
+ },
+ {
+  "id": "S028",
+  "category": "safety",
+  "query": "动火作业需要什么手续",
+  "expected_steps": 10,
+  "min_steps": 5,
+  "expected_docs": [
+   "安全操作规程"
+  ]
+ },
+ {
+  "id": "S029",
+  "category": "safety",
+  "query": "锂电池产线为什么禁止金属工具搭接极柱",
+  "expected_steps": 10,
+  "min_steps": 5,
+  "expected_docs": [
+   "安全操作规程",
+   "新员工入职安全培训"
+  ]
+ },
+ {
+  "id": "S030",
+  "category": "management",
+  "query": "交接班五交五不交是什么",
+  "expected_steps": 10,
+  "min_steps": 8,
+  "expected_docs": [
+   "交接班管理规范"
+  ]
+ },
+ {
+  "id": "S031",
+  "category": "management",
+  "query": "6S管理包括哪六项",
+  "expected_steps": 6,
+  "min_steps": 5,
+  "expected_docs": [
+   "车间6S管理标准"
+  ]
+ },
+ {
+  "id": "S032",
+  "category": "management",
+  "query": "6S每周几检查，低于多少分要整改",
+  "expected_steps": 6,
+  "min_steps": 4,
+  "expected_docs": [
+   "车间6S管理标准"
+  ]
+ },
+ {
+  "id": "S033",
+  "category": "process",
+  "query": "激光焊接主要工艺参数有哪些，各影响什么",
+  "expected_steps": 5,
+  "min_steps": 4,
+  "expected_docs": [
+   "激光焊接工艺参数调优指南"
+  ]
+ },
+ {
+  "id": "S034",
+  "category": "process",
+  "query": "虚焊多应该调哪些参数，怎么调",
+  "expected_steps": 5,
+  "min_steps": 4,
+  "expected_docs": [
+   "激光焊接工艺参数调优指南"
+  ]
+ },
+ {
+  "id": "S035",
+  "category": "process",
+  "query": "气孔多应该调哪些参数",
+  "expected_steps": 5,
+  "min_steps": 4,
+  "expected_docs": [
+   "激光焊接工艺参数调优指南",
+   "焊缝常见缺陷"
+  ]
+ },
+ {
+  "id": "S036",
+  "category": "process",
+  "query": "参数调整后验证要求是什么",
+  "expected_steps": 5,
+  "min_steps": 4,
+  "expected_docs": [
+   "激光焊接工艺参数调优指南"
+  ]
+ },
+ {
+  "id": "S037",
+  "category": "process",
+  "query": "焊接速度对焊缝质量有什么影响",
+  "expected_steps": 5,
+  "min_steps": 3,
+  "expected_docs": [
+   "激光焊接工艺参数调优指南"
+  ]
+ },
+ {
+  "id": "S038",
+  "category": "quality",
+  "query": "焊缝气孔的可能原因和处理方法",
+  "expected_steps": 5,
+  "min_steps": 4,
+  "expected_docs": [
+   "焊缝常见缺陷及处理指南"
+  ]
+ },
+ {
+  "id": "S039",
+  "category": "quality",
+  "query": "焊缝咬边怎么调整",
+  "expected_steps": 5,
+  "min_steps": 4,
+  "expected_docs": [
+   "焊缝常见缺陷及处理指南",
+   "激光焊接工艺参数调优指南"
+  ]
+ },
+ {
+  "id": "S040",
+  "category": "quality",
+  "query": "焊穿怎么处理",
+  "expected_steps": 5,
+  "min_steps": 4,
+  "expected_docs": [
+   "焊缝常见缺陷及处理指南"
+  ]
+ },
+ {
+  "id": "S041",
+  "category": "quality",
+  "query": "焊缝外观检验标准是什么",
+  "expected_steps": 5,
+  "min_steps": 4,
+  "expected_docs": [
+   "焊缝常见缺陷及处理指南",
+   "品质检验标准"
+  ]
+ },
+ {
+  "id": "S042",
+  "category": "quality",
+  "query": "涂胶断胶怎么处理",
+  "expected_steps": 4,
+  "min_steps": 3,
+  "expected_docs": [
+   "涂胶常见缺陷及处理"
+  ]
+ },
+ {
+  "id": "S043",
+  "category": "quality",
+  "query": "涂胶气泡什么原因",
+  "expected_steps": 4,
+  "min_steps": 3,
+  "expected_docs": [
+   "涂胶常见缺陷及处理"
+  ]
+ },
+ {
+  "id": "S044",
+  "category": "quality",
+  "query": "涂胶偏移怎么调整",
+  "expected_steps": 4,
+  "min_steps": 3,
+  "expected_docs": [
+   "涂胶常见缺陷及处理"
+  ]
+ },
+ {
+  "id": "S045",
+  "category": "maintenance",
+  "query": "激光器定期保养周期表内容",
+  "expected_steps": 4,
+  "min_steps": 4,
+  "expected_docs": [
+   "激光器保养与保护镜更换规程"
+  ]
+ },
+ {
+  "id": "S046",
+  "category": "maintenance",
+  "query": "冷却水多久更换一次",
+  "expected_steps": 4,
+  "min_steps": 3,
+  "expected_docs": [
+   "激光器保养与保护镜更换规程"
+  ]
+ },
+ {
+  "id": "S047",
+  "category": "maintenance",
+  "query": "保护镜安全库存要求多少片",
+  "expected_steps": 4,
+  "min_steps": 3,
+  "expected_docs": [
+   "激光器保养与保护镜更换规程"
+  ]
+ },
+ {
+  "id": "S048",
+  "category": "maintenance",
+  "query": "光路对中多久做一次，用什么测",
+  "expected_steps": 4,
+  "min_steps": 3,
+  "expected_docs": [
+   "激光器保养与保护镜更换规程"
+  ]
+ },
+ {
+  "id": "S049",
+  "category": "management",
+  "query": "设备维修记录要填哪些内容",
+  "expected_steps": 5,
+  "min_steps": 4,
+  "expected_docs": [
+   "设备维修记录模板及规范"
+  ]
+ },
+ {
+  "id": "S050",
+  "category": "management",
+  "query": "涉及虚焊的维修为什么要关联视觉复核结果",
+  "expected_steps": 5,
+  "min_steps": 4,
+  "expected_docs": [
+   "设备维修记录模板及规范",
+   "虚焊故障处理SOP"
+  ]
+ }
 ]

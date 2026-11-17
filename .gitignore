@@ -45,3 +45,8 @@ scripts/upload_chat.py
 scripts/upload_docs.py
 scripts/check_ocr.py
 scripts/test_ocr.py
+
+# ML 训练产物（大文件，由训练脚本生成）
+models/
+data/weld_vision/
+data/weld_vision_depth/

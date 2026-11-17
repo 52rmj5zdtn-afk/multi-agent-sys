@@ -1,0 +1,31 @@
+# 巢湖 Line03 模组线 — MiniPLC（PLCSIM Advanced 虚拟 PLC）OPC UA 标签映射表
+# =====================================================================
+# 真实 PLC 链路边：TIA NoSafety 副本中的 MiniPLC（CPU 1516TF V4.0）已下载到
+# 虚拟 PLC Line03PLC（192.168.1.6:4840）。节点路径以 browse_opcua.py 实际
+# 浏览为准；S7-1500 全局 DB 成员默认 ns=3;s="DB名"."成员名"。
+# 原 SICAR 全量映射见 tags_weld.sicar.bak（需 F 密码下载真程序后启用）。
+
+line: line03
+station: miniplc
+
+opcua:
+  endpoint: "opc.tcp://192.168.1.6:4840"
+  namespace: 3                              # S7-1500 符号节点默认命名空间
+  security_policy: Basic256Sha256_SignAndEncrypt
+  cert_dir: "certs"                         # 证书目录（PLC/边缘双向互信）
+
+devices:
+  line03-weld-mini:                        # 焊接过程量（PdM 虚焊预警特征源）
+    cycle_tag: '"WELD_DB".cycle_id'
+    features:
+      - { name: weld_current_a,  node: '"WELD_DB".weld_current_a',  deadband: 0 }
+      - { name: weld_voltage_v,  node: '"WELD_DB".weld_voltage_v',  deadband: 0 }
+      - { name: weld_power_kw,   node: '"WELD_DB".weld_power_kw',   deadband: 0 }
+      - { name: resist_dev_pct,  node: '"WELD_DB".resist_dev_pct',  deadband: 0 }
+      - { name: weld_temp_c,     node: '"WELD_DB".weld_temp_c',     deadband: 0 }
+      - { name: alarm,           node: '"WELD_DB".alarm',           deadband: 0 }
+  line03-line-mini:                        # 线体状态
+    features:
+      - { name: line_mode,  node: '"LINE_DB".line_mode',   deadband: 0 }
+      - { name: opmode_no,  node: '"LINE_DB".opmode_no',   deadband: 0 }
+      - { name: heartbeat,  node: '"LINE_DB".heartbeat',   deadband: 0 }

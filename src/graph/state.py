@@ -52,7 +52,7 @@ class AgentState:
 
     示例 (简化版):
         state = AgentState(
-            user_query="注塑机料筒温度异常怎么处理",
+            user_query="激光焊机功率衰减报警怎么处理",
             user_context=UserContext("worker_zhang", UserRole.WORKER, "workshop-a"),
             session_id="session_abc",
         )
@@ -62,7 +62,7 @@ class AgentState:
 
     # ── 输入 (Guard Node 填充) ──────────────────
     user_query: str = ""
-    """用户输入的原始查询文本。示例: "注塑机料筒温度异常怎么处理" """
+    """用户输入的原始查询文本。示例: "激光焊机功率衰减报警怎么处理" """
 
     user_context: Optional[UserContext] = None
     """用户身份上下文 (角色/车间/权限)。Guard Node 完成 RBAC 校验后注入。"""
@@ -80,16 +80,26 @@ class AgentState:
     # ── 中间结果 (各 Agent Node 填充) ────────────
     agent_outputs: dict[str, str] = field(default_factory=dict)
     """各 Agent 的输出结果。
-    示例: {"knowledge": "根据SOP-HA-12, 换模步骤为...", "diagnosis": "根因: 料筒温度传感器故障"}
+    示例: {"knowledge": "根据SOP-LW-12, 换型步骤为...", "diagnosis": "根因: 保护镜污染功率衰减"}
     """
 
     citations: list[dict] = field(default_factory=list)
     """引用来源列表。
-    示例: [{"doc_id": "sop-HA-12", "title": "换模指导书", "chunk_index": 3}]
+    示例: [{"doc_id": "sop-LW-12", "title": "换型工装指导书", "chunk_index": 3}]
     """
 
     retrieved_context: str = ""
     """检索到的原始文档上下文 (已清洗 + 压缩)。送给 LLM 作为 RAG 的参考材料。"""
+
+    # ── 附件 & ML 结果 (vision_inspection / predictive_maintenance 填充) ──
+    attachments: list[dict] = field(default_factory=list)
+    """随查询传入的附件列表。示例: [{"type": "image", "path": "data/uploads/xxx.jpg", "url": "/uploads/xxx.jpg"}]"""
+
+    ml_results: dict[str, Any] = field(default_factory=dict)
+    """ML 推理服务的结构化输出，供下游 LLM 节点做决策。
+    示例: {"vision": {"defect_detected": true, "anomaly_score": 0.985, ...},
+           "rul": {"rul_cycles": 42.0, "padded": false, ...}}
+    服务不可用时值为 {"error": "..."}，下游节点据此降级。"""
 
     # ── 输出 (Aggregate Node 填充) ───────────────
     final_answer: str = ""

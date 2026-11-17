@@ -128,3 +128,8 @@ class MESUnavailableError(IntegrationError):
 class MESSyncError(IntegrationError):
     code = "E50002"
     message = "MES 同步异常，需人工对账"
+
+
+class MLServiceUnavailableError(IntegrationError):
+    code = "E50003"
+    message = "ML 推理服务不可用，已降级"

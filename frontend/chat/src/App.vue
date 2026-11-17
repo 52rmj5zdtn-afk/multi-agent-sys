@@ -82,7 +82,7 @@
             <el-button size="small" @click="quickAction('查报警码')">⚠ 查报警码</el-button>
             <el-button size="small" @click="quickAction('故障处理')">🔧 故障处理</el-button>
             <el-button size="small" @click="quickAction('设备点检')">✅ 设备点检</el-button>
-            <el-button size="small" @click="quickAction('换模步骤')">🔄 换模步骤</el-button>
+            <el-button size="small" @click="quickAction('换型步骤')">🔄 换型步骤</el-button>
           </div>
           <div class="input-row">
             <el-button size="large" @click="toggleVoice" :type="listening ? 'warning' : 'default'" :icon="Microphone" circle style="flex-shrink:0" :title="listening ? '正在聆听...' : '语音输入'" />
@@ -363,7 +363,7 @@ const streamingText = ref('')
 const sessionId = ref(localStorage.getItem('chat_session_id') || '')
 const userSessions = ref([])
 const messagesContainer = ref(null)
-const equipmentList = ['海天MA1200','FANUC CNC','扬力冲压线','HA-003','HA-005']
+const equipmentList = ['TRUMPF-LW-301','LW-B02','ST-201','GL-201','ET-101']
 const recentCitations = computed(() => {
   const all = []; for (const msg of [...messages.value].reverse()) { if (msg.citations) all.push(...msg.citations); if (all.length>=5) break }; return all.slice(0,5)
 })
@@ -408,7 +408,7 @@ async function sendMessage() {
 }
 
 function quickAction(action) {
-  const prompts = { '查SOP':'请帮我查找SOP，关于','查报警码':'请查一下报警码','故障处理':'设备出现故障，','设备点检':'设备每日点检需要检查哪些项目？','换模步骤':'注塑机换模的具体步骤是什么？' }
+  const prompts = { '查SOP':'请帮我查找SOP，关于','查报警码':'请查一下报警码','故障处理':'设备出现故障，','设备点检':'设备每日点检需要检查哪些项目？','换型步骤':'激光焊机换型工装的具体步骤是什么？' }
   inputText.value = prompts[action] || `${action} 相关问题`
 }
 

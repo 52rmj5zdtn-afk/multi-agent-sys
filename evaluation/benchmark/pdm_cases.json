@@ -1,0 +1,6 @@
+[
+  {"id":"P001","category":"pdm","equipment":"demo-compressor-001","difficulty":"easy","query":"demo-compressor-001 还剩多少寿命？","expected_keywords":["剩余寿命","循环","demo-compressor-001"],"min_len":30},
+  {"id":"P002","category":"pdm","equipment":"demo-compressor-001","difficulty":"easy","query":"这台设备还能用多久，需要提前维修吗？","expected_keywords":["剩余寿命","循环"],"min_len":30},
+  {"id":"P003","category":"pdm","equipment":"demo-compressor-001","difficulty":"medium","query":"什么时候该给 demo-compressor-001 做预测性维护？","expected_keywords":["维修","剩余寿命"],"min_len":30},
+  {"id":"P004","category":"pdm","equipment":"demo-compressor-001","difficulty":"medium","query":"帮我评估一下 demo-compressor-001 的健康状况，要不要排维修窗口","expected_keywords":["RUL","维修"],"min_len":30}
+]

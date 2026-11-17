@@ -36,14 +36,21 @@ class Settings(BaseSettings):
     )
 
     # ── LLM ──────────────────────────────────────
-    deepseek_api_key: str = ""
-    deepseek_base_url: str = "https://api.deepseek.com/v1"
-    qwen_api_key: str = ""
+    # 云端 API（OpenAI 兼容协议），优先级见 .env 的 *_model 配置
+    kimi_api_key: str = ""                     # Moonshot/Kimi（KIMICode_API_KEY，须为平台版）
+    kimi_base_url: str = "https://api.moonshot.cn/v1"
+    qwen_api_key: str = ""                     # 阿里 DashScope
     qwen_base_url: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
-    default_model: str = "deepseek-chat"
-    fallback_model: str = "deepseek-chat"
-    simple_task_model: str = "deepseek-chat"
-    complex_task_model: str = "deepseek-chat"
+    deepseek_api_key: str = ""                 # 备用
+    deepseek_base_url: str = "https://api.deepseek.com/v1"
+    # 本地/离线 LLM（Ollama，OpenAI 兼容 :11434/v1）
+    ollama_base_url: str = "http://localhost:11434/v1"
+    ollama_api_key: str = "ollama"             # Ollama 不校验，占位即可
+    # 模型路由：简单/复杂/默认/降级（kimi 优先，qwen 兜底，ollama 离线兜底）
+    default_model: str = "qwen-turbo"
+    fallback_model: str = "qwen-turbo"
+    simple_task_model: str = "qwen-turbo"
+    complex_task_model: str = "qwen-plus"
 
     # ── Milvus ───────────────────────────────────
     milvus_host: str = "localhost"
@@ -107,6 +114,14 @@ class Settings(BaseSettings):
     # ── Checkpoint ───────────────────────────────
     checkpoint_ttl_seconds: int = 3600
 
+    # ── ML 推理服务（sidecar：视觉质检 / RUL 预测） ──
+    ml_enabled: bool = True            # 总开关；False 时新节点自动降级，图行为与融合前一致
+    ml_vision_url: str = "http://localhost:8001"
+    ml_rul_url: str = "http://localhost:8002"
+    ml_vision_timeout: float = 10.0    # 视觉检测 CPU 推理 ~300ms/张，留足排队余量
+    ml_rul_timeout: float = 5.0
+    ml_rul_warn_cycles: int = 50        # 全局默认 RUL 预警阈值（设备台账 devices.rul_warn_cycles 可覆盖）
+
     # ── Retrieval ────────────────────────────────
     retrieval_top_k: int = 20
     hybrid_bm25_weight_exact: float = 0.7
@@ -117,9 +132,10 @@ class Settings(BaseSettings):
     context_window_ratio_threshold: float = 0.7
     compressor_model: str = "qwen-turbo"
 
-    # ── Offline ──────────────────────────────────
+    # ── Offline / 本地离线 LLM ────────────────────
     offline_enabled: bool = True
-    offline_llm_model: str = "qwen-2.5-14b-int4"
+    offline_llm_model: str = "qwen2.5:14b"   # Ollama 模型名，见 deployment/ollama-setup.md
+    offline_llm_base_url: str = ""            # 空 = 用 ollama_base_url
 
     # ── Logging ──────────────────────────────────
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"

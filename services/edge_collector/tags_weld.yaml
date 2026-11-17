@@ -1,0 +1,40 @@
+# 巢湖 Line03 模组线 — 激光焊接工位（OpMode7-EM040）OPC UA 标签映射表
+# =====================================================================
+# 节点路径于 2026-11-16 经 asyncua 对真实仿真 PLC（PLCSIM Advanced，
+# 装载原 SICAR 项目 Line03MCPBoZhonSiemens20260401）浏览确认：
+#   浏览导出 deployment/opcua_nodes_browse.json（全量）
+#   焊接子树 deployment/opcua_weld_subtrees.json（8519 节点，8478 可读）
+#
+# S7-1500 OPC UA 符号节点规则：ns=3;s="DB"."Struct"[数组下标]."成员"
+# （数组元素下标用方括号、不带引号——不是猜的点号路径）。
+# 每个 DB 的“可从 OPC UA 访问”属性由程序决定：本项目中
+# GLOBAL_LASERWELDING_HMI_IF_DB / OPMODE07_DB / PRODUCTION_DATA_DB
+# 等可读，OPMODE07_EM040_DB 等不可读（BadNotReadable），选点时已规避。
+#
+# 设备: 1 号激光焊接工位（LaserTRUMPF[1] / Laser_Safety_New[1]，
+#       程序中共有 3 套并列工位，下标 0/1/2，按需复制 devices 条目）
+#
+# deadband: 变化死区（绝对值），|新值-上次发送值| > deadband 才触发上报；
+#           cycle 序号不参与死区判断（每拍必报，维持时序连续性）。
+
+line: line03
+station: opmode7-em040
+
+opcua:
+  endpoint: "opc.tcp://192.168.1.6:4840"     # PLCSIM Advanced 实例 Line03PLC（X1）
+  namespace: 3                              # S7-1500 符号节点命名空间
+  security_policy: None                     # 仿真 PLC 当前启用 None 策略；上真机后改
+                                            # Basic256Sha256_SignAndEncrypt 并配置证书互信
+  insecure: true
+  cert_dir: "certs"                         # 证书目录（真机双向互信时使用）
+
+devices:
+  line03-weld-laser-01:                      # 1 号 TRUMPF 激光焊接工位
+    cycle_tag: '"GLOBAL_LASERWELDING_HMI_IF_DB"."Laser_Safety_New"[1]."WeldTotalNumTimes"'  # 累计焊接次数（实测=24，单调递增）
+    features:
+      - { name: laser_power_setpoint_w,  node: '"GLOBAL_LASERWELDING_HMI_IF_DB"."LaserTRUMPF"[1]."Laser"."Output"."LASER_POWER"',        deadband: 5 }
+      - { name: laser_power_actual_w,    node: '"GLOBAL_LASERWELDING_HMI_IF_DB"."LaserTRUMPF"[1]."Laser"."ActualLaserPower"',            deadband: 5 }
+      - { name: emission_on,             node: '"GLOBAL_LASERWELDING_HMI_IF_DB"."LaserTRUMPF"[1]."Laser"."Output"."EMISSION_ON"',       deadband: 0 }
+      - { name: single_point_time_ms,    node: '"GLOBAL_LASERWELDING_HMI_IF_DB"."Laser_Safety_New"[1]."SinglePointTime"',               deadband: 10 }
+      - { name: protective_glass_life,   node: '"GLOBAL_LASERWELDING_HMI_IF_DB"."LaserTRUMPF"[1]."Laser"."Output"."PROTECTIVE_GLASS_LIFETIME_REACHED"', deadband: 0 }
+      - { name: warning_lamp_on,         node: '"GLOBAL_LASERWELDING_HMI_IF_DB"."LaserTRUMPF"[1]."Laser"."Output"."LASER_WARNING_LAMP_IS_ON"', deadband: 0 }

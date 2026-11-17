@@ -13,11 +13,11 @@ Phase 3: 跨会话故障经验存储与召回。
   {
     "case_id": "case_xxx",
     "query": "用户原始问题",
-    "equipment_model": "海天MA1200",
-    "fault_code": "HT-E-0021",
-    "fault_category": "温度异常",
-    "root_cause": "料筒温度传感器故障",
-    "solution": "更换传感器, 校准PID",
+    "equipment_model": "TRUMPF-LW-301",
+    "fault_code": "LW-E-0021",
+    "fault_category": "功率衰减",
+    "root_cause": "保护镜污染导致功率反馈异常",
+    "solution": "更换保护镜, 重新校准振镜",
     "workshop_id": "workshop-a",
     "verified": true,
     "created_at": "2026-07-18T10:00:00"
@@ -31,7 +31,7 @@ Phase 3: 跨会话故障经验存储与召回。
   await ltm.save_case(case_data)
   # 召回类似经验
   cases = await ltm.recall(query_vec, workshop_id="workshop-a",
-                            equipment_model="海天MA1200", fault_code="HT-E-0021")
+                            equipment_model="TRUMPF-LW-301", fault_code="LW-E-0021")
 """
 
 import json
@@ -115,9 +115,9 @@ class LongTermMemory:
         示例:
             case_id = await ltm.save_case(CaseMemory(
                 case_id=f"case_{uuid.uuid4().hex[:8]}",
-                query="注塑机料筒温度异常，报警HT-E-0021",
+                query="激光焊机功率衰减报警，报警LW-E-0021",
                 answer_summary="传感器故障，更换传感器并校准PID参数",
-                equipment_model="海天MA1200", fault_code="HT-E-0021",
+                equipment_model="TRUMPF-LW-301", fault_code="LW-E-0021",
                 fault_category="温度异常", workshop_id="workshop-a",
                 verified=True,
             ))
@@ -158,7 +158,14 @@ class LongTermMemory:
             from src.data.models import KnowledgeCase
             factory = get_session_factory()
             async def _save():
+                from sqlalchemy import select as _select
                 async with factory() as session:
+                    # 幂等：同 case_id 已存在则跳过（评估/重复会话会触发重复归档）
+                    _exists = (await session.execute(
+                        _select(KnowledgeCase.case_id).where(KnowledgeCase.case_id == case.case_id)
+                    )).first()
+                    if _exists:
+                        return
                     session.add(KnowledgeCase(
                         case_id=case.case_id, equipment_model=case.equipment_model,
                         fault_code=case.fault_code, fault_category=case.fault_category,
@@ -202,9 +209,9 @@ class LongTermMemory:
 
         示例:
             hits = await ltm.recall(
-                query_text="注塑机料筒温度异常",
-                workshop_id="workshop-a", equipment_model="海天MA1200",
-                fault_code="HT-E-0021", top_k=5,
+                query_text="激光焊机功率衰减报警",
+                workshop_id="workshop-a", equipment_model="TRUMPF-LW-301",
+                fault_code="LW-E-0021", top_k=5,
             )
             for h in hits:
                 print(f"[Tier{h.tier}] score={h.score:.3f} {h.query}")
@@ -303,10 +310,10 @@ class LongTermMemory:
             "温度": ["温度", "过热", "过冷", "加热"],
             "振动": ["振动", "异响", "噪音"],
             "精度": ["精度", "超差", "偏差", "尺寸"],
-            "液压": ["液压", "油压", "泄漏", "油温"],
+            "冷却": ["冷却水", "水温", "泄漏", "流量"],
             "电气": ["电气", "电路", "传感", "通讯", "PLC"],
             "机械": ["机械", "磨损", "断裂", "松动"],
-            "质量": ["缺陷", "缩水", "毛边", "飞边", "凹陷"],
+            "质量": ["缺陷", "气孔", "焊偏", "断胶", "凹陷"],
         }
         for cat, kws in categories.items():
             if any(kw in text for kw in kws):
@@ -367,9 +374,9 @@ class LongTermMemory:
 
         示例:
             should, reason, meta = await ltm.should_archive(
-                query="料筒温度异常HT-E-0021",
+                query="激光功率衰减报警LW-E-0021",
                 answer="传感器故障, 更换传感器, 校准PID...",
-                equipment_model="海天MA1200", fault_code="HT-E-0021",
+                equipment_model="TRUMPF-LW-301", fault_code="LW-E-0021",
             )
             if should:
                 await ltm.save_case_draft(meta)

@@ -29,11 +29,11 @@ ingestion.py — 文档摄入管线
 使用示例:
     from src.retrieval.ingestion import standard_ingest, IngestDocument
     doc = IngestDocument(
-        title="注塑机操作手册",
+        title="激光焊接机操作手册",
         content="原始文档内容...",
         doc_type="equipment_manual",
         workshop_id="workshop-a",
-        equipment_model="海天MA1200",
+        equipment_model="TRUMPF-LW-301",
     )
     result = await standard_ingest(doc)
     print(f"摄入完成: {result.chunk_count} 个分块, 状态: {result.status}")
@@ -63,13 +63,13 @@ class IngestDocument:
 
     示例:
         doc = IngestDocument(
-            title="海天MA1200 注塑机操作手册",
+            title="TRUMPF-LW-301 激光焊接机操作手册",
             content="第一章 设备概述\n...",
             doc_type="equipment_manual",
             doc_id="doc_manual_ha_001",
             workshop_id="workshop-a",
             classification="internal",
-            equipment_model="海天MA1200",
+            equipment_model="TRUMPF-LW-301",
         )
     """
     title: str
@@ -204,7 +204,7 @@ class IngestionPipeline:
 
         示例:
             pipeline = IngestionPipeline()
-            doc = IngestDocument(title="换模SOP", content="步骤1: 关闭...", doc_type="sop")
+            doc = IngestDocument(title="换型SOP", content="步骤1: 关闭...", doc_type="sop")
             result = await pipeline.ingest(doc)
             if result.status == "done":
                 print(f"摄入成功: {result.chunk_count} chunks")
@@ -244,7 +244,7 @@ class IngestionPipeline:
             logger.info(f"嵌入完成: {len(vectors)} 个向量, 维度: {len(vectors[0])}")
 
             # 6. 双写存储 (Phase 1 先记录日志，ES/Milvus 写入由 sync.py 完成)
-            # TODO: 对接 sync.py::dual_write()
+            # 后续迭代: 对接 sync.py::dual_write()
             logger.info(
                 f"文档摄入: doc_id={doc.doc_id}, title={doc.title}, "
                 f"chunks={len(chunks)}, type={doc.doc_type}, source={doc.source}"
@@ -278,8 +278,8 @@ async def standard_ingest(
 
     示例:
         result = await standard_ingest(IngestDocument(
-            title="模具保养规程",
-            content="1. 每日检查模具表面...",
+            title="激光器保养规程",
+            content="1. 每日检查保护镜表面...",
             doc_type="sop",
             source="manual",
         ))

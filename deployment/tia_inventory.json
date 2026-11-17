@@ -1,0 +1,50 @@
+PROJECT: Line03MCPBoZhonSiemens20260401 | Path: F:\Sicar程序理解\巢湖三拉环线\Line03MCPBoZhonSiemens20260401\Line03MCPBoZhonSiemens20260401.ap20
+CPU ITEM: Zone1_PLC1516TF :: Siemens.Engineering.HW.DeviceItemImpl
+  cpu.TypeIdentifier = OrderNumber:6ES7 516-3UP10-0AB0/V4.0
+  cpu.ArticleNumber = <err 'ArticleNumber' is not supported by type 'Siemens.Engineering.HW.DeviceItemImpl'.
+   在 Siemens.Engineering.Private.Session.Siemens.Engineering.Private.IObjectSession.GetAttribute[T,TC](LifetimeContractHandle`1 lifetimeContractHandle, String name, String fullName)
+   在 Siemens.Engineering.Private.InternalObject_Access`2.GetAttribute[T](String name)
+   在 Siemens.Engineering.HW.HardwareObject.GetAttribute(String name)>
+  cpu.FirmwareVersion = V4.0
+  cpu.Name = Zone1_PLC1516TF
+OPC UA ITEM: OPC UA_1
+  opcua_item.Classification = None
+  opcua_item.Container = Siemens.Engineering.HW.DeviceItemImpl
+  opcua_item.IsBuiltIn = True
+  opcua_item.IsPlugged = True
+  opcua_item.Items = Siemens.Engineering.HW.DeviceItemAssociation
+  opcua_item.Name = OPC UA_1
+  opcua_item.OpcUaAccessControl = False
+  opcua_item.OpcUaAlarmsAndConditionsAcknowledgeActive = False
+  opcua_item.OpcUaAlarmsAndConditionsActiveMultilingual = False
+  opcua_item.OpcUaAlarmsAndConditionsEnable = True
+  opcua_item.OpcUaApplicationName = SIMATIC.S7-1500.OPC-UAServer:=Name.PLC15xx
+  opcua_item.OpcUaAutoAcceptAllClientCertificates = True
+  opcua_item.OpcUaClient = False
+  opcua_item.OpcUaDeprecatedTypeDictionary = True
+  opcua_item.OpcUaDiagnosticsClientRequestsFailedActive = False
+  opcua_item.OpcUaDiagnosticsSamplingTimeErrorActive = False
+  opcua_item.OpcUaDiagnosticsSecurityChecksFailedActive = True
+  opcua_item.OpcUaDiagnosticsServerStatusChangedActive = True
+  opcua_item.OpcUaDiagnosticsSessionStatusChangedActive = True
+  opcua_item.OpcUaDiagnosticsSubscriptionsStatusChangedActive = False
+  opcua_item.OpcUaDiagnosticsSummarizeInterval = 20
+  opcua_item.OpcUaDiagnosticsSummarizeMessagesActive = True
+  opcua_item.OpcUaExportArrayMembers = True
+  opcua_item.OpcUaMaxMonitoredItems = 5000
+  opcua_item.OpcUaMaxRegisteredNodes = 100
+  opcua_item.OpcUaMaxSessionTimeout = 50
+  opcua_item.OpcUaMaxSessions = 5
+  opcua_item.OpcUaMinimumPublishingInterval = 200
+  opcua_item.OpcUaMinimumSamplingInterval = 1000
+  opcua_item.OpcUaPort = 4840
+  opcua_item.OpcUaSecurityPolicies = 81
+  opcua_item.OpcUaServer = True
+  opcua_item.OpcUaServerCertificate = Siemens.Engineering.Security.Certificate
+  opcua_item.OpcUaServerGDSPushActive = False
+  opcua_item.OpcUaStandardServerInterface = True
+  opcua_item.PnSubslotNumber = 254
+  opcua_item.PositionNumber = 254
+  opcua_item.TypeIdentifier = None
+  opcua_item.TypeIdentifierNormalized = None
+SOFTWARE = <none>

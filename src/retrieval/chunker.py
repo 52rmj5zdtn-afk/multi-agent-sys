@@ -11,7 +11,7 @@ chunker.py — 语义分块 + 工业文档适配
    处理: 整表作为一个 chunk，不切割
    示例:
    | 参数 | 值 | 单位 |
-   | 料筒温度 | 200-280 | ℃ |
+   | 激光功率 | 0-4000 | W |
    | 注射压力 | 80-120 | MPa |
    → 整个表格一个 chunk，保证参数不被切散
 
@@ -19,10 +19,10 @@ chunker.py — 语义分块 + 工业文档适配
    触发条件: 检测到 "步骤1:" "Step 1:" "1." 等编号模式
    处理: 按编号边界切分，确保每个步骤完整
    示例:
-   "步骤1: 关闭料筒加热开关，等待温度降至100℃以下
-    步骤2: 松开模具固定螺栓..."
-   → Chunk1: "步骤1: 关闭料筒加热..."
-   → Chunk2: "步骤2: 松开模具..."
+   "步骤1: 关闭激光器电源，执行LOTO挂牌
+    步骤2: 松开工装固定螺栓..."
+   → Chunk1: "步骤1: 关闭激光器电源..."
+   → Chunk2: "步骤2: 松开工装..."
 
 3. 报警码表 → 表级分块
    触发条件: 检测到 "报警码" "故障码" "Alarm Code" 等 header
@@ -36,7 +36,7 @@ chunker.py — 语义分块 + 工业文档适配
 
 使用方式:
     from src.retrieval.chunker import DocumentChunker
-    chunks = DocumentChunker().chunk(text="完整文档内容", title="注塑机操作手册")
+    chunks = DocumentChunker().chunk(text="完整文档内容", title="激光焊接机操作手册")
 
 注意事项:
 - overlap 会导致同一段文字出现在两个 chunk 中，检索时会去重
@@ -216,7 +216,7 @@ class DocumentChunker:
             text: 文档全文
             title: 文档标题
             heading: 当前章节标题
-            equipment_model: 关联设备型号 (如 "海天MA1200")
+            equipment_model: 关联设备型号 (如 "TRUMPF-LW-301")
 
         返回:
             分块列表
@@ -224,15 +224,15 @@ class DocumentChunker:
         示例:
             chunker = DocumentChunker()
             chunks = chunker.chunk(
-                text="步骤1: 关闭加热\n步骤2: 松开模具",
-                title="换模作业指导书",
-                equipment_model="海天MA1200"
+                text="步骤1: 关闭电源\n步骤2: 松开工装",
+                title="换型工装作业指导书",
+                equipment_model="TRUMPF-LW-301"
             )
             for c in chunks:
                 print(f"[{c.chunk_type}] {c.chunk_id}: {c.content[:50]}...")
             # 输出:
             # [sop_step] doc_000_chunk_0: 步骤1: 关闭加热
-            # [sop_step] doc_000_chunk_1: 步骤2: 松开模具
+            # [sop_step] doc_000_chunk_1: 步骤2: 松开工装
         """
         content_type = self._detect_content_type(text)
 

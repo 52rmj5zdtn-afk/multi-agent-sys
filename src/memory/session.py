@@ -4,7 +4,7 @@ session.py — Redis 短期记忆管理
 角色：管理单个会话的对话上下文，让模型能记住"刚才聊了什么"。
 
 为什么需要短期记忆:
-- 用户问"这台机器怎么办" → 需要知道上文说的"这台机器"是"HA-003 注塑机"
+- 用户问"这台机器怎么办" → 需要知道上文说的"这台机器"是"LW-301 激光焊机"
 - 用户追问"那步骤2呢" → 需要知道步骤2指的是上一轮回答的维修步骤
 
 存储结构:
@@ -33,14 +33,14 @@ TTL: 2 小时 (会话活跃时自动续期)
     memory = get_session_memory()
 
     # 添加一轮对话
-    await memory.add_message("session_abc", {"role": "user", "content": "料筒温度异常"})
-    await memory.add_message("session_abc", {"role": "assistant", "content": "根据SOP-HA-12..."})
+    await memory.add_message("session_abc", {"role": "user", "content": "激光功率衰减报警"})
+    await memory.add_message("session_abc", {"role": "assistant", "content": "根据SOP-LW-12..."})
 
     # 获取上下文 (给 LLM 用)
     context = await memory.get_context("session_abc", max_messages=20)
     # context = [
-    #   {"role": "user", "content": "料筒温度异常"},
-    #   {"role": "assistant", "content": "根据SOP-HA-12..."}
+    #   {"role": "user", "content": "激光功率衰减报警"},
+    #   {"role": "assistant", "content": "根据SOP-LW-12..."}
     # ]
 
     # 获取最后一条用户消息 (用于快捷指令)

@@ -7,7 +7,7 @@ embedding.py — 文本嵌入服务
 为什么用 BGE-large-zh-v1.5:
 - 中文语义理解 SOTA 级别
 - 1024 维向量，权衡了精度和存储成本
-- 制造业专业术语 (如 "注塑缩水"、"刀纹异常") 的语义表示效果好
+- 制造业专业术语 (如 "焊缝气孔"、"焊偏异常") 的语义表示效果好
 
 使用方式:
     from src.retrieval.embedding import EmbeddingService, get_embedding_service
@@ -15,19 +15,19 @@ embedding.py — 文本嵌入服务
     service = get_embedding_service()  # 单例，避免重复加载模型
 
     # 单条文本
-    vec = await service.embed("注塑机料筒温度异常")
+    vec = await service.embed("激光焊机功率衰减报警")
     # vec 是 list[float], 长度 1024
 
     # 批量 (性能更好)
     vecs = await service.embed_batch([
-        "注塑机怎么换模具",
-        "冲压线安全操作规程",
-        "CNC 加工精度异常怎么排查"
+        "激光焊机怎么换工装",
+        "模组线安全操作规程",
+        "EOL 测试电阻超标怎么排查"
     ])
     # vecs 是 list[list[float]], 每个长度 1024
 
     # 查询专用 (BGE 模型对查询有特殊前缀)
-    query_vec = await service.embed_query("料筒温度异常怎么处理")
+    query_vec = await service.embed_query("激光功率衰减报警怎么处理")
 
 查询 vs 文档的区别:
 - 查询: 前面加 "为这个句子生成表示以用于检索相关文章：" prefix (BGE 官方推荐)
@@ -103,7 +103,7 @@ class EmbeddingService:
         """单条文本编码 (异步)。
 
         示例:
-            vec = await service.embed("注塑机料筒温度异常")
+            vec = await service.embed("激光焊机功率衰减报警")
             # vec = [0.012, -0.034, 0.056, ...]  # 1024 维
         """
         loop = asyncio.get_running_loop()
@@ -118,7 +118,7 @@ class EmbeddingService:
         推理时保持一致性能最好。文档不需要加。
 
         示例:
-            vec = await service.embed_query("料筒温度异常怎么处理")
+            vec = await service.embed_query("激光功率衰减报警怎么处理")
         """
         return await self.embed(BGE_QUERY_PREFIX + query)
 

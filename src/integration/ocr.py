@@ -31,9 +31,18 @@ _warmed_up = False
 
 
 def _load_reader():
-    """在后台线程加载 EasyOCR 模型（不阻塞事件循环）。"""
+    """在后台线程加载 EasyOCR 模型（不阻塞事件循环）。
+
+    easyocr 未安装时降级为无 OCR（返回 None），调用方按空文本处理，
+    保证视觉链路（image-chat → vision sidecar）不因此中断。
+    """
     global _reader
-    import easyocr
+    try:
+        import easyocr
+    except ImportError:
+        logger.warning("easyocr 未安装，OCR 功能降级为空（pip install easyocr 可启用铭牌文字提取）")
+        _reader = None
+        return
     logger.info("EasyOCR 模型加载中（后台线程）...")
     t0 = time.time()
     _reader = easyocr.Reader(['ch_sim', 'en'], gpu=False)
@@ -106,7 +115,10 @@ async def extract_text(image_path: str) -> str:
     except Exception as e:
         logger.warning(f"图片预处理失败: {e}")
 
-    # OCR 识别（CPU 密集，用 executor + 超时）
+    # OCR 识别（CPU 密集，用 executor + 超时）；easyocr 未安装时 _reader 为 None，直接跳过
+    if _reader is None:
+        logger.debug("OCR 不可用（easyocr 未安装），返回空文本")
+        return ""
     try:
         text = await asyncio.wait_for(
             loop.run_in_executor(_ocr_executor, _do_ocr, ocr_path),

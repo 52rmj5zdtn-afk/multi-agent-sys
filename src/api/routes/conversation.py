@@ -13,7 +13,7 @@ Content-Type: text/event-stream
 使用示例:
   curl -X POST http://localhost:8000/api/v1/conversation/chat \
     -H "Content-Type: application/json" \
-    -d '{"message": "注塑机怎么换模具", "workshop_id": "workshop-a"}' \
+    -d '{"message": "激光焊机怎么换工装", "workshop_id": "workshop-a"}' \
     --no-buffer
 """
 
@@ -73,7 +73,7 @@ async def _stream_chat(request: ChatRequest, fastapi_req: Request) -> AsyncItera
         return
 
     # 提取结果
-    final_answer = result.get("final_answer", "系统未能获取有效回答")
+    final_answer = result.get("final_answer") or "系统未能获取有效回答，请稍后重试"
     citations = result.get("citations", [])
     model_used = result.get("model_used", "unknown")
     latency = result.get("latency_ms", (time.time() - t0) * 1000)
@@ -123,7 +123,7 @@ async def chat(request: ChatRequest, fastapi_req: Request):
     发送对话消息，返回 SSE 流式响应。
 
     示例请求:
-        {"message": "注塑机料筒温度异常怎么处理", "workshop_id": "workshop-a"}
+        {"message": "激光焊机功率衰减报警怎么处理", "workshop_id": "workshop-a"}
 
     SSE 事件:
         event: message  → {"type": "text", "content": "根据SOP-HA-12, "}
@@ -227,7 +227,11 @@ async def cleanup_sessions(fastapi_req: Request, keep_recent: int = 10):
 
 @router.post("/image-chat")
 async def image_chat(fastapi_req: Request):
-    """POST /api/v1/conversation/image-chat — 图片消息 (OCR提取文字后送入对话)。
+    """POST /api/v1/conversation/image-chat — 图片消息（入图：视觉质检 Agent + 多 Agent 图）。
+
+    融合改造：上传的图片作为附件进入 LangGraph（vision_inspection 节点调 ML 检测，
+    quality 节点做处置决策），不再绕过图直接调 LLM。OCR 文字作为查询上下文注入，
+    对铭牌/报警屏类图片仍有价值。
 
     multipart/form-data: file + message(可选描述) + workshop_id + session_id
     """
@@ -256,39 +260,46 @@ async def image_chat(fastapi_req: Request):
     content = await file.read()
     img_path.write_bytes(content)
 
-    # OCR 提取文字
+    # OCR 作为查询上下文（失败则忽略）
     from src.integration.ocr import extract_text
     ocr_text = await extract_text(str(img_path))
+    has_ocr = ocr_text and "[OCR识别失败" not in ocr_text
 
-    # 构建带有 OCR 结果的 prompt
-    ocr_context = ocr_text if ocr_text and "[OCR识别失败" not in ocr_text else ""
     display_msg = message if message and message != "请分析这张图片中的设备信息" else "[图片]"
+    query = display_msg
+    if has_ocr:
+        query = f"{display_msg}\n[图片OCR文字]: {ocr_text}"
     sid = session_id or f"img_{uuid.uuid4().hex[:8]}"
 
-    # 直接调 LLM (不走 Graph，避免 knowledge node 存含 OCR 的全文)
-    from src.model.fallback import fallback_chain
-    from src.model.router import TaskComplexity
-    llm_messages = [
-        {"role": "system", "content": "你是制造业设备专家。根据提供的图片OCR识别结果和设备信息，分析故障并给出处理建议。如果知识库中没有相关文档，基于通用工业知识回答。引用来源时标注'通用知识'。"},
-        {"role": "user", "content": f"用户上传了一张图片，OCR识别结果如下:\n{ocr_context}\n\n用户问题: {display_msg}"},
-    ]
-    llm_result = await fallback_chain.chat_with_fallback(
-        messages=llm_messages, complexity=TaskComplexity.COMPLEX, query=display_msg,
+    # 构建带图片附件的 state，进入 LangGraph：
+    # router 检测到附件 → 路由 vision_inspection → quality 做处置决策
+    state = AgentState(
+        user_query=query,
+        user_context=user,
+        session_id=sid,
+        query_type="semantic",
+        attachments=[{"type": "image", "path": str(img_path), "url": f"/uploads/{img_name}"}],
     )
-    final_answer = llm_result.content or "未能识别图片内容，请重新上传清晰图片。"
 
-    # 持久化干净的消息 (不含 OCR 文本)
-    from src.memory.session import get_session_memory
-    memory = get_session_memory()
-    # 内容前缀存图片路径，前端解析渲染
+    try:
+        graph = get_compiled_graph()
+        result = await asyncio.wait_for(graph.ainvoke(state), timeout=120.0)
+    except asyncio.TimeoutError:
+        return APIResponse(code=50000, message="请求超时，请重试").model_dump()
+    except Exception as e:
+        logger.error(f"图片对话 Graph 执行异常: {e}", exc_info=True)
+        return APIResponse(code=50000, message=f"处理失败: {e}").model_dump()
+
+    final_answer = result.get("final_answer") or "系统未能获取有效回答，请稍后重试"
     img_url = f"/uploads/{img_name}"
-    await memory.add_message(sid, {"role": "user", "content": f"[IMG]{img_url} {display_msg}"}, user_id=user.user_id)
-    await memory.add_message(sid, {"role": "assistant", "content": final_answer}, user_id=user.user_id)
+    # 会话持久化由图内节点完成（knowledge/memory 节点写会话与 DB），
+    # 此处不再重复 add_message——与 /chat 行为保持一致，避免历史重复。
 
     return APIResponse(data={
         "answer": final_answer,
         "session_id": sid,
-        "image_url": f"/uploads/{img_name}",
+        "image_url": img_url,
+        "ml_results": result.get("ml_results", {}),
     }).model_dump()
 
 

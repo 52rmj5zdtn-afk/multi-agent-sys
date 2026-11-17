@@ -99,7 +99,7 @@ JWT Payload 结构：
 ```json
 {
   "session_id": "uuid-optional",         // 不传则新建会话
-  "message": "注塑机HA-003料筒温度异常怎么处理",
+  "message": "激光焊机LW-301功率衰减报警怎么处理",
   "context": {                           // 可选上下文
     "equipment_id": "HA-003",
     "fault_code": "HT-E-0021"
@@ -116,7 +116,7 @@ event: message
 data: {"type":"text","content":"SOP-HA-12","step":2}
 
 event: citation
-data: {"doc_id":"sop-ha-12","title":"海天MA1200换模指导书","chunk_index":3}
+data: {"doc_id":"sop-lw-12","title":"LW-301换型工装指导书","chunk_index":3}
 
 event: done
 data: {"session_id":"uuid-xxx","tokens_used":456,"model":"deepseek-v3","latency_ms":2800}
@@ -145,7 +145,7 @@ SSE 事件类型：
     "messages": [
       {
         "role": "user",
-        "content": "料筒温度异常怎么处理",
+        "content": "激光功率衰减报警怎么处理",
         "created_at": "2026-07-17T14:30:00Z"
       },
       {
@@ -216,7 +216,7 @@ classification: "internal"
 
 **Query:**
 ```
-?query=注塑机换模步骤&workshop_id=workshop-a&hybrid=true&top_k=10
+?query=激光焊机换型工装步骤&workshop_id=workshop-a&hybrid=true&top_k=10
 ```
 
 **Response:**
@@ -228,7 +228,7 @@ classification: "internal"
       {
         "rank": 1,
         "chunk_id": "...",
-        "doc_title": "换模作业指导书",
+        "doc_title": "换型工装作业指导书",
         "content_snippet": "...",
         "bm25_score": 0.85,
         "dense_score": 0.92,
@@ -264,7 +264,7 @@ X-MES-Event-ID: evt-uuid-xxx
   "new_status": "completed",
   "operator": "张工",
   "timestamp": "2026-07-17T15:00:00Z",
-  "remark": "已更换料筒传感器，温度恢复正常"
+  "remark": "已更换保护镜，功率恢复正常"
 }
 ```
 
@@ -366,7 +366,7 @@ ws://localhost:8000/api/v1/ws/chat?token={jwt_token}
 {
   "type": "message",
   "session_id": "uuid-optional",
-  "content": "注塑机怎么换模具",
+  "content": "激光焊机怎么换工装",
   "context": { "equipment_id": "HA-003" }
 }
 ```
@@ -420,9 +420,9 @@ ws://localhost:8000/api/v1/ws/chat?token={jwt_token}
   "source": "manufacturing-agent",
   "workshop_id": "workshop-a",
   "equipment_id": "HA-003",
-  "equipment_model": "海天MA1200",
+  "equipment_model": "TRUMPF-LW-301",
   "fault_code": "HT-E-0021",
-  "fault_desc": "料筒温度传感器异常",
+  "fault_desc": "激光功率反馈传感器异常",
   "priority": "P1",
   "diagnosis": "传感器故障，建议更换",
   "created_by": "诊断Agent",

@@ -25,17 +25,17 @@ hybrid.py — 混合检索编排
 查询类型 "精确型号":
   判断条件: LLM 分类为 exact 或正则命中设备型号/报警码
   权重: BM25 0.7 : Dense 0.3
-  场景: "海天MA1200 润滑点位置"、"HT-E-0021 报警码含义"
+  场景: "TRUMPF LW-301 保护镜位置"、"LW-E-0021 报警码含义"
 
 查询类型 "混合组合":
   判断条件: LLM 分类为 mixed 或同时含型号+故障描述
   权重: BM25 0.5 : Dense 0.5
-  场景: "海天MA1200 料筒温度异常怎么处理"
+  场景: "激光焊机LW-301 功率衰减报警怎么处理"
 
 查询类型 "模糊语义":
   判断条件: LLM 分类为 semantic 或无语义型号
   权重: BM25 0.3 : Dense 0.7
-  场景: "打出来的件有毛边怎么回事"
+  场景: "焊出来的焊缝有气孔怎么回事"
 
 RRF (Reciprocal Rank Fusion) 公式:
   score = sum( 1 / (k + rank_i) ), 其中 rank_i 是第 i 个检索器的排名, k=60
@@ -45,7 +45,7 @@ RRF (Reciprocal Rank Fusion) 公式:
 
     retriever = HybridRetriever(bm25_retriever, dense_retriever, reranker)
     results = await retriever.search(
-        query="海天MA1200 料筒温度异常怎么处理",
+        query="激光焊机LW-301 功率衰减报警怎么处理",
         workshop_id="workshop-a",
         top_k=10,
     )
@@ -86,10 +86,10 @@ class HybridRetriever:
 
     示例:
         retriever = HybridRetriever(bm25, dense, reranker)
-        results = await retriever.search("料筒温度异常怎么处理", "workshop-a")
+        results = await retriever.search("激光功率衰减报警怎么处理", "workshop-a")
     """
 
-    # 报警码正则: 如 HT-E-0021, CN-E-0015
+    # 报警码正则: 如 LW-E-0021, CN-E-0015
     ALARM_CODE_PATTERN = re.compile(r'\b[A-Z]{2,}-\w{3,}\b')
     # 设备型号: 中文品牌+字母数字
     MODEL_PATTERN = re.compile(r'([A-Z]{2,}\d{2,}|[A-Z]+-[A-Z]+\d+)|\b[A-Z]{2,}\d{3,}\b')
@@ -116,11 +116,11 @@ class HybridRetriever:
         3. 都没命中 → SEMANTIC
 
         示例:
-            >>> retriever.classify_query("HT-E-0021")
+            >>> retriever.classify_query("LW-E-0021")
             "exact"
-            >>> retriever.classify_query("海天MA1200 料筒温度异常")
+            >>> retriever.classify_query("TRUMPF LW-301 激光功率衰减")
             "mixed"
-            >>> retriever.classify_query("打出来的件有毛边")
+            >>> retriever.classify_query("打出来的件有焊偏")
             "semantic"
         """
         has_alarm = bool(self.ALARM_CODE_PATTERN.search(query))
@@ -216,7 +216,7 @@ class HybridRetriever:
         完整检索流程示例:
             retriever = HybridRetriever(bm25, dense, reranker)
             results = await retriever.search(
-                query="料筒温度异常怎么处理",
+                query="激光功率衰减报警怎么处理",
                 workshop_id="workshop-a",
                 top_k=5,
             )

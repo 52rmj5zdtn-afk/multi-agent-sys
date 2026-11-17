@@ -214,11 +214,11 @@ async def dual_write_chunk(
     示例:
         success = await dual_write_chunk(
             chunk_id="doc001_chunk_3",
-            content="料筒温度异常处理步骤...",
+            content="激光功率衰减报警处理步骤...",
             embedding=[0.1, -0.2, ...],
             workshop_id="workshop-a",
             doc_type="sop",
-            metadata={"equipment_model": "海天MA1200"},
+            metadata={"equipment_model": "TRUMPF-LW-301"},
             bm25_retriever=bm25,
             dense_retriever=dense,
             sync=sync,

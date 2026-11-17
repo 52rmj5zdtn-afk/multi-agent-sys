@@ -1,0 +1,22 @@
+{
+ "alarm": {
+  "passed": 29,
+  "total": 30
+ },
+ "injection": {
+  "passed": 16,
+  "total": 25
+ },
+ "rbac": {
+  "passed": 6,
+  "total": 12
+ },
+ "safety": {
+  "passed": 2,
+  "total": 10
+ },
+ "vision": {
+  "passed": 0,
+  "total": 3
+ }
+}

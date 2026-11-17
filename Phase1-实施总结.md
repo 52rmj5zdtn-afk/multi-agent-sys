@@ -186,9 +186,9 @@ Step 4: Re-ranker 精排（Cross-encoder 深度匹配） ← 百毫秒级（只�
 ```
 
 **为什么 Step 3 的 RRF 权重是动态的**：
-- 查询"海天MA1200 润滑点" → 精确型号，BM25 权重 0.7
-- 查询"打出来的件有毛边" → 模糊语义，向量权重 0.7
-- 查询"海天MA1200 料筒温度异常怎么处理" → 组合查询，均衡 0.5:0.5
+- 查询"TRUMPF LW-301 保护镜更换" → 精确型号，BM25 权重 0.7
+- 查询"焊缝有气孔怎么回事" → 模糊语义，向量权重 0.7
+- 查询"LW-301 激光功率衰减报警怎么处理" → 组合查询，均衡 0.5:0.5
 
 分类逻辑优先用正则（"HT-E-0021"这种报警码格式直接用正则匹配），正则没命中才走语义判断。**不用 LLM 做分类，省一次 API 调用**。
 
@@ -208,7 +208,7 @@ Step 4: Re-ranker 精排（Cross-encoder 深度匹配） ← 百毫秒级（只�
 
 ## 三、一条请求的完整旅程
 
-以用户问"注塑机料筒温度异常怎么处理"为例，追踪请求从前端到 LLM 再回来的完整路径：
+以用户问"激光焊机功率衰减报警怎么处理"为例，追踪请求从前端到 LLM 再回来的完整路径：
 
 ### 第 0 步：前端发起请求
 
@@ -217,7 +217,7 @@ Step 4: Re-ranker 精排（Cross-encoder 深度匹配） ← 百毫秒级（只�
 const response = await fetch('/api/v1/conversation/chat', {
     method: 'POST',
     body: JSON.stringify({
-        message: "注塑机料筒温度异常怎么处理",
+        message: "激光焊机功率衰减报警怎么处理",
         user_id: "worker_zhang",
         workshop_id: "workshop-a",
     })
@@ -237,7 +237,7 @@ async def chat(request: ChatRequest):
 
 ```python
 state = AgentState(
-    user_query="注塑机料筒温度异常怎么处理",
+    user_query="激光焊机功率衰减报警怎么处理",
     user_context=DEMO_USERS["worker_zhang"],  # 张工(产线)
     session_id="session_abc123",
 )
@@ -247,7 +247,7 @@ result = await graph.ainvoke(state)
 ### 第 3 步：Guard Node — 安全检查
 
 ```
-检测注入 → 无 ("注塑机料筒..." 是正常查询)
+检测注入 → 无 ("激光焊机功率..." 是正常查询)
 解析角色 → "worker_zhang" = 产线工人
 校验权限 → knowledge:read ✅
 通过 → 进入 Router
@@ -256,10 +256,10 @@ result = await graph.ainvoke(state)
 ### 第 4 步：Router Node — 意图分类
 
 ```
-查询: "注塑机料筒温度异常怎么处理"
+查询: "激光焊机功率衰减报警怎么处理"
 正则检测:
   报警码格式 [A-Z]+-\d+ → 无
-  设备型号(HA-\w+) → 无  （"料筒温度异常" 没有型号关键词）
+  设备型号(LW-\w+) → 无  （"功率衰减报警" 没有型号关键词）
   故障关键词(异常/怎么/处理) → 有
 分类结果: semantic (模糊语义)
 路由: ["knowledge"] (Phase 1 全部到 knowledge)
@@ -273,12 +273,12 @@ result = await graph.ainvoke(state)
 5.1  查语义缓存 → 未命中 (第一次问)
 5.2  获取会话历史 → 空 (新会话)
 5.3  混合检索:
-     Query: "注塑机料筒温度异常怎么处理"
+     Query: "激光焊机功率衰减报警怎么处理"
      Step A: BM25 从 35 chunks 中召回 → 得分最高的 30 条
      Step B: Dense 从 35 chunks 中召回 → query_vec 相似度最高的 30 条
      Step C: RRF 融合 (semantic 类型, BM25_w=0.3, Dense_w=0.7)
      Step D: Re-ranker 精排 → Top-10
-     → 最相关的可能是: "设备报警码对照表 HT-E-0021" + "注塑机常见缺陷"
+     → 最相关的可能是: "设备报警码对照表 LW-E-0021" + "激光焊机常见缺陷"
      
 5.4  检索后清洗 → 检查检索到的片段中是否有注入指令 → 无
 5.5  上下文压缩 → 10 个 chunk 总长度 < 8000 字符 → 不需要压缩
@@ -430,7 +430,7 @@ while (true) {
 | ✅ | 重试机制（LLM 调用重试 3 次） | 通过 | 日志确认 |
 | ✅ | 熔断降级链（主模型→备选→规则） | 通过 | 日志确认 |
 | ✅ | 前端界面（角色切换+快捷指令+SSE流式） | 通过 | 代码完成 |
-| ✅ | 文档搜索（可检索到"换模SOP"内容） | 通过 | 检索测试 |
+| ✅ | 文档搜索（可检索到"换型工装SOP"内容） | 通过 | 检索测试 |
 
 ---
 

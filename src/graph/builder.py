@@ -21,19 +21,21 @@ Agent 分发逻辑:
   router
     │
     ▼
-  knowledge ─────────────┐
-    │                     │
-    ▼                     │
-  agent_router            │
-    │                     │
-    ├── diagnosis ────────┤
-    ├── inspection ───────┤
-    ├── scheduling ───────┤
-    ├── quality ──────────┤
-    ├── report ───────────┤
-    │                     │
-    ▼                     ▼
-  aggregate ◄─────────────┘
+  knowledge ───────────────────┐
+    │                          │
+    ▼                          │
+  agent_router                  │
+    │                           │
+    ├── vision_inspection ──────┤   ← ML 检测（图片附件），结果供 quality 消费
+    ├── predictive_maintenance ─┤   ← ML 预测（设备 RUL），结果供 inspection 消费
+    ├── diagnosis ──────────────┤
+    ├── inspection ─────────────┤
+    ├── scheduling ─────────────┤
+    ├── quality ────────────────┤
+    ├── report ─────────────────┤
+    │                          │
+    ▼                          ▼
+  aggregate ◄───────────────────┘
     │
     ▼
   memory
@@ -53,15 +55,22 @@ from src.graph.nodes.inspection import inspection_node
 from src.graph.nodes.scheduling import scheduling_node
 from src.graph.nodes.quality import quality_node
 from src.graph.nodes.report import report_node
+from src.graph.nodes.vision_inspection import create_vision_node, VisionNodeContext
+from src.graph.nodes.predictive_maintenance import create_pdm_node, PDMNodeContext
 from src.graph.nodes.aggregate import aggregate_node
 from src.graph.nodes.memory_node import memory_node
 from src.graph.edges import route_after_guard
+from src.graph.nodes.router import AGENT_EXEC_ORDER
 from src.retrieval.hybrid import HybridRetriever
 from src.memory.session import SessionMemory
 from src.memory.compressor import ContextCompressor
 from src.core.logging import get_logger
 
 logger = get_logger(__name__)
+
+# specialist 全集与执行顺序：直接复用 router 的 AGENT_EXEC_ORDER（单一事实来源，
+# 避免两处维护不一致）。ML 工具节点在前，LLM 节点在后。
+SPECIALIST_AGENTS = list(AGENT_EXEC_ORDER)
 
 
 def route_after_knowledge(state: AgentState) -> str:
@@ -105,6 +114,8 @@ def build_graph(
         compressor=compressor,
     )
     knowledge_fn = create_knowledge_node(ctx)
+    vision_fn = create_vision_node()
+    pdm_fn = create_pdm_node()
 
     graph = StateGraph(AgentState)
 
@@ -112,6 +123,8 @@ def build_graph(
     graph.add_node("guard", guard_node)
     graph.add_node("router", router_node)
     graph.add_node("knowledge", knowledge_fn)
+    graph.add_node("vision_inspection", vision_fn)
+    graph.add_node("predictive_maintenance", pdm_fn)
     graph.add_node("diagnosis", diagnosis_node)
     graph.add_node("inspection", inspection_node)
     graph.add_node("scheduling", scheduling_node)
@@ -128,29 +141,22 @@ def build_graph(
     })
     graph.add_edge("router", "knowledge")
 
-    # knowledge → aggregate (只有 knowledge) 或 → first specialist
+    # knowledge → aggregate (只有 knowledge) 或 → first specialist（ML 工具节点优先）
+    specialist_edges = {name: name for name in SPECIALIST_AGENTS}
     graph.add_conditional_edges("knowledge", route_after_knowledge, {
         "aggregate": "aggregate",
-        "diagnosis": "diagnosis",
-        "inspection": "inspection",
-        "scheduling": "scheduling",
-        "quality": "quality",
-        "report": "report",
+        **specialist_edges,
     })
 
     # 每个 specialist → aggregate 或 → next specialist
-    for agent_id in ["diagnosis", "inspection", "scheduling", "quality", "report"]:
+    for agent_id in SPECIALIST_AGENTS:
         graph.add_conditional_edges(agent_id, route_after_specialist, {
             "aggregate": "aggregate",
-            "diagnosis": "diagnosis",
-            "inspection": "inspection",
-            "scheduling": "scheduling",
-            "quality": "quality",
-            "report": "report",
+            **specialist_edges,
         })
 
     graph.add_edge("aggregate", "memory")
     graph.add_edge("memory", END)
 
-    logger.info("LangGraph Phase 2: guard → router → knowledge → [specialists] → aggregate → memory")
+    logger.info("LangGraph: guard → router → knowledge → [vision_inspection/predictive_maintenance/...] → aggregate → memory")
     return graph

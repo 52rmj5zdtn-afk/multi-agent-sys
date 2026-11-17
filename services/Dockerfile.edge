@@ -1,0 +1,15 @@
+# 边缘采集链路镜像（edge-collector + telemetry-consumer 共用，生产形态）
+# 生产 consumer 走 http sink（仅 paho+httpx）；db sink 为本地联调模式，需完整仓库依赖。
+FROM python:3.12-slim
+
+WORKDIR /srv
+COPY services/__init__.py ./services/__init__.py
+COPY services/edge_collector ./services/edge_collector
+COPY services/telemetry_consumer ./services/telemetry_consumer
+COPY scripts/seed_weld_line.py ./scripts/seed_weld_line.py   # 仿真源依赖（信号定义单一来源）
+
+RUN pip install --no-cache-dir \
+        "paho-mqtt>=2.0" "asyncua>=1.1" "PyYAML>=6.0" "httpx>=0.27" "numpy>=1.26"
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONUTF8=1

@@ -21,6 +21,10 @@ services:
       - RERANKER_DEVICE=cpu
       - LOG_LEVEL=INFO
       - PYTHONUNBUFFERED=1
+      # ML sidecar 地址（compose 网络内用服务名）
+      - ML_ENABLED=${ML_ENABLED:-true}
+      - ML_VISION_URL=http://ml-vision:8001
+      - ML_RUL_URL=http://ml-rul:8002
     volumes:
       - model_cache:/root/.cache    # Embedding/Reranker 模型缓存
       - ../data:/app/data           # 数据库/种子数据持久化
@@ -32,6 +36,44 @@ services:
       timeout: 10s
       retries: 5
       start_period: 180s   # 首次启动种子加载需要 2-3 分钟
+    networks:
+      - manufacturing
+
+  # 视觉质检推理服务（焊缝检测，本仓库 services/weld_vision 构建）:
+  #   模型产物: python -m services.weld_vision.train --model patchcore --tag 2d
+  #             python -m services.weld_vision.train --model patchcore --tag depth
+  ml-vision:
+    build:
+      context: ..
+      dockerfile: services/weld_vision/Dockerfile
+    image: ml-vision:weld-latest
+    container_name: manufacturing-ml-vision
+    ports:
+      - "8001:8001"
+    environment:
+      - PYTHONUTF8=1
+    volumes:
+      - ../models/weld_vision:/models      # patchcore-2d.pt / patchcore-depth.pt + 同名 json
+      - ../data:/app/data                  # 检测热力图输出
+    restart: unless-stopped
+    networks:
+      - manufacturing
+
+  # 预测性维护 RUL 推理服务（虚焊预警，本仓库 services/weld_rul 构建）:
+  #   模型产物: python -m services.weld_rul.train --units 240 --epochs 30
+  ml-rul:
+    build:
+      context: ..
+      dockerfile: services/weld_rul/Dockerfile
+    image: ml-rul:weld-latest
+    container_name: manufacturing-ml-rul
+    ports:
+      - "8002:8002"
+    environment:
+      - PYTHONUTF8=1
+    volumes:
+      - ../models/weld_rul:/models         # 每台设备一个子目录（model.pt/scaler.json/meta.json）
+    restart: unless-stopped
     networks:
       - manufacturing
 
@@ -49,9 +91,83 @@ services:
     networks:
       - manufacturing
 
+  # ── 边缘采集链路（M1：S7-1500 → OPC UA → MQTT → 遥测管线） ──────────
+  mqtt-broker:
+    image: eclipse-mosquitto:2
+    container_name: manufacturing-mqtt
+    ports:
+      - "127.0.0.1:1883:1883"      # 仅本机/边缘 IPC 可达；M2 加密码与 TLS
+    volumes:
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+    restart: unless-stopped
+    networks:
+      - manufacturing
+
+  # 生产命令去掉 --simulate，换成:
+  #   --endpoint opc.tcp://<S7-1500 IP>:4840 --user <opcua用户> --password <***>
+  edge-collector:
+    build:
+      context: ..
+      dockerfile: services/Dockerfile.edge
+    image: edge-collector:latest
+    container_name: manufacturing-edge-collector
+    command: >
+      python -m services.edge_collector.app
+      --simulate
+      --mqtt-host mqtt-broker
+      --buffer /tmp/edge_buffer.db
+    depends_on:
+      - mqtt-broker
+    restart: unless-stopped
+    networks:
+      - manufacturing
+
+  # 服务账号需班组长及以上角色（遥测摄入鉴权）；用 .env 注入 TELEMETRY_USER/PASSWORD
+  telemetry-consumer:
+    build:
+      context: ..
+      dockerfile: services/Dockerfile.edge
+    image: telemetry-consumer:latest
+    container_name: manufacturing-telemetry-consumer
+    command: >
+      python -m services.telemetry_consumer.app
+      --sink http --api http://backend:8000
+      --user ${TELEMETRY_USER:-telemetry_bot}
+      --password ${TELEMETRY_PASSWORD:-}
+    depends_on:
+      - mqtt-broker
+      - backend
+    restart: unless-stopped
+    networks:
+      - manufacturing
+
+  # Ollama 本地/离线 LLM（可选，docker compose --profile local-llm up -d ollama）
+  # GPU: 安装 nvidia-container-toolkit 后取消 deploy 段注释
+  ollama:
+    image: ollama/ollama:latest
+    container_name: manufacturing-ollama
+    profiles: ["local-llm"]
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_models:/root/.ollama
+    environment:
+      - OLLAMA_NUM_PARALLEL=2
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+    restart: unless-stopped
+    networks:
+      - manufacturing
+
 networks:
   manufacturing:
     driver: bridge
 
 volumes:
   model_cache:
+  ollama_models:

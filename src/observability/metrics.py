@@ -81,6 +81,37 @@ def record_retrieval(source: str, duration_s: float):
     retrieval_duration.labels(source=source).observe(duration_s)
 
 
+# ── ML 推理服务指标 ───────────────────────────
+
+ml_requests = Counter(
+    "ml_requests_total", "ML inference requests",
+    ["service", "status"],  # service: vision / rul
+)
+
+ml_inference_duration = Histogram(
+    "ml_inference_duration_seconds", "ML inference latency",
+    ["service"],
+    buckets=[0.05, 0.1, 0.25, 0.5, 1.0, 2.0, 5.0, 10.0],
+)
+
+
+def record_ml(service: str, success: bool, duration_s: float):
+    ml_requests.labels(service=service, status="ok" if success else "error").inc()
+    ml_inference_duration.labels(service=service).observe(duration_s)
+
+
+# ── 质检复核指标（人在回路） ─────────────────────
+
+inspection_reviews = Counter(
+    "inspection_reviews_total", "Human review of AI inspection verdicts",
+    ["result", "product"],  # result: confirmed_defect / false_positive
+)
+
+
+def record_inspection_review(result: str, product: str):
+    inspection_reviews.labels(result=result, product=product).inc()
+
+
 def set_active_sessions(count: int):
     active_sessions.set(count)
 

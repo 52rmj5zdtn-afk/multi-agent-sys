@@ -1,32 +1,433 @@
 [
-  {"id":"F001","category":"diagnosis","equipment":"海天MA1200","difficulty":"easy","query":"注塑机报警HT-E-0021是什么问题，怎么处理？","expected_keywords":["温度传感器","电阻","更换","PID"],"min_len":150},
-  {"id":"F002","category":"diagnosis","equipment":"海天MA1200","difficulty":"easy","query":"注塑机料筒温度一直上不去怎么回事","expected_keywords":["加热圈","温控器","传感器","排查"],"min_len":150},
-  {"id":"F003","category":"diagnosis","equipment":"海天MA1200","difficulty":"medium","query":"注塑机液压系统压力不稳定怎么处理","expected_keywords":["液压泵","检查","油温","更换"],"min_len":150},
-  {"id":"F004","category":"diagnosis","equipment":"海天MA1200","difficulty":"medium","query":"注塑件缩水很严重，怎么调整工艺参数","expected_keywords":["保压","压力","时间","模具温度","料筒温度"],"min_len":200},
-  {"id":"F005","category":"diagnosis","equipment":"海天MA1200","difficulty":"hard","query":"注塑机突然停机了，所有指示灯都灭了，怎么回事","expected_keywords":["电源","急停","PLC","检查"],"min_len":150},
-  {"id":"F006","category":"diagnosis","equipment":"FANUC CNC","difficulty":"easy","query":"CNC加工中心主轴有异响，报警SP-9001","expected_keywords":["刀具","轴承","动平衡","振动"],"min_len":150},
-  {"id":"F007","category":"diagnosis","equipment":"FANUC CNC","difficulty":"medium","query":"CNC加工精度总是偏差0.02mm以上","expected_keywords":["刀具","磨损","夹紧","热变形","反向间隙"],"min_len":150},
-  {"id":"F008","category":"diagnosis","equipment":"FANUC CNC","difficulty":"hard","query":"CNC换刀时卡住了，刀库不动","expected_keywords":["传感器","电机","限位","手动"],"min_len":100},
-  {"id":"F009","category":"diagnosis","equipment":"扬力JH21","difficulty":"medium","query":"冲压件边缘毛刺太大超过0.1mm","expected_keywords":["刃口","修磨","间隙","材料硬度"],"min_len":150},
-  {"id":"F010","category":"diagnosis","equipment":"扬力JH21","difficulty":"medium","query":"冲压拉深件侧面出现了裂纹","expected_keywords":["压边力","材料","塑性","拉深比","润滑"],"min_len":150},
-  {"id":"F011","category":"diagnosis","equipment":"装配线-AB200","difficulty":"easy","query":"装配线螺丝锁付扭矩报警AB-E-002","expected_keywords":["扭矩","批头","供料器","校准"],"min_len":100},
-  {"id":"F012","category":"diagnosis","equipment":"YAMAHA YSM20","difficulty":"medium","query":"SMT贴片机抛料率很高怎么排查","expected_keywords":["吸嘴","送料器","元件","校准"],"min_len":150},
-  {"id":"F013","category":"diagnosis","equipment":"海天MA1200","difficulty":"easy","query":"注塑机怎么换模具","expected_keywords":["关闭","降温","螺栓","吊车","试运行","安全"],"min_len":300},
-  {"id":"F014","category":"diagnosis","equipment":"海天MA1200","difficulty":"easy","query":"注塑件表面有凹陷怎么处理","expected_keywords":["缩水","保压","模具温度","浇口"],"min_len":150},
-  {"id":"F015","category":"diagnosis","equipment":"FANUC CNC","difficulty":"easy","query":"45钢粗铣用什么切削参数","expected_keywords":["切削速度","120","进给量","切深","硬质合金"],"min_len":80},
-  {"id":"F016","category":"diagnosis","equipment":"海天MA1200","difficulty":"medium","query":"注塑机料筒温度偏差超过30度怎么排查","expected_keywords":["传感器","加热圈","温控器","电源","PID"],"min_len":200},
-  {"id":"F017","category":"diagnosis","equipment":"FANUC CNC","difficulty":"medium","query":"CNC加工时有振刀现象","expected_keywords":["切削参数","刀具悬伸","工件夹持","降低"],"min_len":100},
-  {"id":"F018","category":"diagnosis","equipment":"扬力JH21","difficulty":"medium","query":"冲压滑块卡住了怎么办","expected_keywords":["急停","润滑","导向柱","手动盘车"],"min_len":120},
-  {"id":"F019","category":"diagnosis","equipment":"海天MA1200","difficulty":"hard","query":"注塑机模具分型面飞边严重","expected_keywords":["锁模力","分型面","注射压力","温度"],"min_len":150},
-  {"id":"F020","category":"diagnosis","equipment":"FANUC CNC","difficulty":"hard","query":"CNC主轴电机过热报警SP-9002","expected_keywords":["冷却","负荷","驱动","检查"],"min_len":120},
-  {"id":"F021","category":"maintenance","equipment":"通用","difficulty":"easy","query":"每天开机前设备点检要检查哪些项目","expected_keywords":["液压油","润滑","急停","安全门","温度"],"min_len":100},
-  {"id":"F022","category":"maintenance","equipment":"通用","difficulty":"medium","query":"模具保养需要做什么，多久做一次","expected_keywords":["清洁","分型面","顶出","冷却水","润滑","5000"],"min_len":150},
-  {"id":"F023","category":"safety","equipment":"通用","difficulty":"easy","query":"新员工进车间要注意哪些安全事项","expected_keywords":["PPE","安全帽","防护眼镜","急停","消防"],"min_len":200},
-  {"id":"F024","category":"safety","equipment":"通用","difficulty":"medium","query":"车间着火了怎么处理","expected_keywords":["呼救","消防报警","灭火器","逃生","集合点"],"min_len":100},
-  {"id":"F025","category":"safety","equipment":"通用","difficulty":"easy","query":"冲压线操作有哪些安全规定","expected_keywords":["手不入模","光电保护","急停","上锁挂牌","LOTO"],"min_len":200},
-  {"id":"F026","category":"alarm","equipment":"海天MA1200","difficulty":"easy","query":"HT-E-0021报警码是什么含义","expected_keywords":["温度传感器","异常","P1"],"min_len":50},
-  {"id":"F027","category":"alarm","equipment":"FANUC CNC","difficulty":"easy","query":"CNC报警SP-9001是什么意思","expected_keywords":["主轴","振动","P0"],"min_len":40},
-  {"id":"F028","category":"alarm","equipment":"装配线-AB200","difficulty":"easy","query":"装配线AB-E-004报警是什么意思","expected_keywords":["视觉检测","镜头","光源","P0"],"min_len":40},
-  {"id":"F029","category":"alarm","equipment":"海天MA1200","difficulty":"medium","query":"HT-E-0022和HT-E-0023有什么区别","expected_keywords":["超上限","P0","低于下限","P1","停止加热"],"min_len":80},
-  {"id":"F030","category":"parameter","equipment":"FANUC CNC","difficulty":"medium","query":"铝合金6061精铣用什么参数","expected_keywords":["切削速度","500","进给量","切深"],"min_len":80}
+ {
+  "id": "F001",
+  "category": "diagnosis",
+  "equipment": "激光焊机LW-301",
+  "difficulty": "easy",
+  "query": "激光焊机报LW-E-0021是什么问题，怎么处理",
+  "expected_keywords": [
+   "功率反馈",
+   "保护镜",
+   "振镜",
+   "校准"
+  ],
+  "min_len": 150
+ },
+ {
+  "id": "F002",
+  "category": "diagnosis",
+  "equipment": "激光焊机LW-301",
+  "difficulty": "easy",
+  "query": "焊缝最近老是出现气孔，可能是什么原因",
+  "expected_keywords": [
+   "保护气",
+   "纯度",
+   "来料",
+   "清洁",
+   "速度"
+  ],
+  "min_len": 150
+ },
+ {
+  "id": "F003",
+  "category": "diagnosis",
+  "equipment": "激光焊机LW-301",
+  "difficulty": "medium",
+  "query": "激光焊机实际功率比设定值低5%，焊缝熔宽变窄怎么办",
+  "expected_keywords": [
+   "功率衰减",
+   "泵浦",
+   "保护镜",
+   "虚焊",
+   "拉力"
+  ],
+  "min_len": 200
+ },
+ {
+  "id": "F004",
+  "category": "diagnosis",
+  "equipment": "激光焊机LW-301",
+  "difficulty": "medium",
+  "query": "焊出来的焊缝外观正常但导通电阻超标，判定虚焊，怎么排查",
+  "expected_keywords": [
+   "功率",
+   "振镜",
+   "光路",
+   "来料",
+   "间隙"
+  ],
+  "min_len": 200
+ },
+ {
+  "id": "F005",
+  "category": "diagnosis",
+  "equipment": "激光焊机LW-301",
+  "difficulty": "medium",
+  "query": "激光头温度比平时高，伴随功率波动，什么原因",
+  "expected_keywords": [
+   "冷却水",
+   "水温",
+   "镜片",
+   "污染"
+  ],
+  "min_len": 180
+ },
+ {
+  "id": "F006",
+  "category": "diagnosis",
+  "equipment": "激光焊机LW-301",
+  "difficulty": "easy",
+  "query": "冷却水机报LW-E-0032水温过高怎么处理",
+  "expected_keywords": [
+   "滤网",
+   "压缩机",
+   "通风"
+  ],
+  "min_len": 150
+ },
+ {
+  "id": "F007",
+  "category": "diagnosis",
+  "equipment": "电芯堆叠机ST-201",
+  "difficulty": "medium",
+  "query": "堆叠机压装力曲线出现突变，可能是什么原因",
+  "expected_keywords": [
+   "来料",
+   "厚度",
+   "压头",
+   "磨损"
+  ],
+  "min_len": 180
+ },
+ {
+  "id": "F008",
+  "category": "diagnosis",
+  "equipment": "电芯堆叠机ST-201",
+  "difficulty": "easy",
+  "query": "堆叠机报ST-E-103电芯缺料怎么处理",
+  "expected_keywords": [
+   "AGV",
+   "上料",
+   "输送线",
+   "传感器"
+  ],
+  "min_len": 120
+ },
+ {
+  "id": "F009",
+  "category": "diagnosis",
+  "equipment": "电芯堆叠机ST-201",
+  "difficulty": "easy",
+  "query": "电芯扫码绑定失败率超过2%怎么排查",
+  "expected_keywords": [
+   "扫码枪",
+   "清洁",
+   "二维码",
+   "印刷质量"
+  ],
+  "min_len": 150
+ },
+ {
+  "id": "F010",
+  "category": "diagnosis",
+  "equipment": "涂胶机GL-201",
+  "difficulty": "medium",
+  "query": "涂胶出现断胶，胶路不连续，什么原因",
+  "expected_keywords": [
+   "气压",
+   "胶阀",
+   "堵塞",
+   "供胶"
+  ],
+  "min_len": 150
+ },
+ {
+  "id": "F011",
+  "category": "diagnosis",
+  "equipment": "涂胶机GL-201",
+  "difficulty": "medium",
+  "query": "涂胶胶体里有气泡，固化后强度不足怎么办",
+  "expected_keywords": [
+   "胶水",
+   "有效期",
+   "脱泡",
+   "漏气"
+  ],
+  "min_len": 150
+ },
+ {
+  "id": "F012",
+  "category": "diagnosis",
+  "equipment": "涂胶机GL-201",
+  "difficulty": "easy",
+  "query": "涂胶轨迹偏离涂胶槽怎么调整",
+  "expected_keywords": [
+   "视觉定位",
+   "标定",
+   "来料",
+   "定位"
+  ],
+  "min_len": 120
+ },
+ {
+  "id": "F013",
+  "category": "diagnosis",
+  "equipment": "EOL测试台ET-101",
+  "difficulty": "medium",
+  "query": "EOL测试导通电阻超标，怀疑虚焊，接下来该做什么",
+  "expected_keywords": [
+   "SOP-LW-07",
+   "焊接工位",
+   "排查",
+   "隔离",
+   "抽检"
+  ],
+  "min_len": 200
+ },
+ {
+  "id": "F014",
+  "category": "diagnosis",
+  "equipment": "EOL测试台ET-101",
+  "difficulty": "easy",
+  "query": "EOL测试台报ET-E-0501探针超程怎么处理",
+  "expected_keywords": [
+   "定位",
+   "夹具",
+   "来料",
+   "尺寸"
+  ],
+  "min_len": 150
+ },
+ {
+  "id": "F015",
+  "category": "diagnosis",
+  "equipment": "KUKA焊接机器人",
+  "difficulty": "hard",
+  "query": "机器人焊接轨迹偏差逐渐增大超过0.15mm，原因和后果",
+  "expected_keywords": [
+   "示教",
+   "零点",
+   "标定",
+   "轨迹",
+   "虚焊"
+  ],
+  "min_len": 220
+ },
+ {
+  "id": "F016",
+  "category": "diagnosis",
+  "equipment": "激光焊机LW-301",
+  "difficulty": "hard",
+  "query": "阴雨天湿度超过50%后焊缝质量不稳定，为什么",
+  "expected_keywords": [
+   "结露",
+   "光学件",
+   "湿度",
+   "除湿",
+   "漂移"
+  ],
+  "min_len": 200
+ },
+ {
+  "id": "F017",
+  "category": "diagnosis",
+  "equipment": "激光焊机LW-301",
+  "difficulty": "medium",
+  "query": "更换保护镜后首件焊缝还是发黑，可能什么原因",
+  "expected_keywords": [
+   "镜片",
+   "正反面",
+   "污染",
+   "气路",
+   "纯度"
+  ],
+  "min_len": 180
+ },
+ {
+  "id": "F018",
+  "category": "diagnosis",
+  "equipment": "激光焊机LW-301",
+  "difficulty": "easy",
+  "query": "激光防护门联锁报警LW-E-0061，能短接联锁继续生产吗",
+  "expected_keywords": [
+   "禁止",
+   "安全",
+   "联锁",
+   "P0"
+  ],
+  "min_len": 120
+ },
+ {
+  "id": "F019",
+  "category": "diagnosis",
+  "equipment": "电芯堆叠机ST-201",
+  "difficulty": "medium",
+  "query": "堆叠定位精度漂移超差，CCD定位需要重新标定，标定周期是多久",
+  "expected_keywords": [
+   "每周",
+   "标定",
+   "CCD",
+   "基准"
+  ],
+  "min_len": 150
+ },
+ {
+  "id": "F020",
+  "category": "diagnosis",
+  "equipment": "涂胶机GL-201",
+  "difficulty": "hard",
+  "query": "同一批次胶水，上午涂胶正常下午出现大量气泡，排查方向",
+  "expected_keywords": [
+   "有效期",
+   "脱泡",
+   "温度",
+   "管路",
+   "漏气"
+  ],
+  "min_len": 200
+ },
+ {
+  "id": "F021",
+  "category": "diagnosis",
+  "equipment": "激光焊机LW-301",
+  "difficulty": "medium",
+  "query": "泵浦二极管累计出光39000小时，功率开始缓慢下降，该不该换",
+  "expected_keywords": [
+   "40000",
+   "衰减",
+   "5%",
+   "备件",
+   "计划"
+  ],
+  "min_len": 180
+ },
+ {
+  "id": "F022",
+  "category": "diagnosis",
+  "equipment": "电芯堆叠机ST-201",
+  "difficulty": "hard",
+  "query": "压装后的模组个别电芯电压异常，可能和堆叠工序什么因素有关",
+  "expected_keywords": [
+   "压装力",
+   "短路",
+   "隔膜",
+   "来料"
+  ],
+  "min_len": 200
+ },
+ {
+  "id": "F023",
+  "category": "diagnosis",
+  "equipment": "KUKA焊接机器人",
+  "difficulty": "medium",
+  "query": "机器人伺服报警RB-E-0401，重启后还反复出现，怎么处理",
+  "expected_keywords": [
+   "驱动器",
+   "电缆",
+   "编码器",
+   "售后"
+  ],
+  "min_len": 150
+ },
+ {
+  "id": "F024",
+  "category": "diagnosis",
+  "equipment": "激光焊机LW-301",
+  "difficulty": "medium",
+  "query": "焊接飞溅明显比以前多，功率爬坡曲线怎么优化",
+  "expected_keywords": [
+   "软启动",
+   "爬坡",
+   "镀层",
+   "功率"
+  ],
+  "min_len": 160
+ },
+ {
+  "id": "F025",
+  "category": "diagnosis",
+  "equipment": "涂胶机GL-201",
+  "difficulty": "easy",
+  "query": "涂胶机供胶压力波动导致胶量不均，先检查什么",
+  "expected_keywords": [
+   "稳压阀",
+   "压力",
+   "计量泵",
+   "校准"
+  ],
+  "min_len": 130
+ },
+ {
+  "id": "F026",
+  "category": "diagnosis",
+  "equipment": "EOL测试台ET-101",
+  "difficulty": "medium",
+  "query": "每日首件测试前为什么要用标准电阻校验",
+  "expected_keywords": [
+   "标准件",
+   "偏差",
+   "0.5%",
+   "计量"
+  ],
+  "min_len": 130
+ },
+ {
+  "id": "F027",
+  "category": "diagnosis",
+  "equipment": "激光焊机LW-301",
+  "difficulty": "hard",
+  "query": "虚焊预警系统提示LW-301健康分58（红色），但产线还在正常生产，要不要停线",
+  "expected_keywords": [
+   "健康分",
+   "预警",
+   "SOP-LW-07",
+   "评估",
+   "风险"
+  ],
+  "min_len": 220
+ },
+ {
+  "id": "F028",
+  "category": "diagnosis",
+  "equipment": "电芯堆叠机ST-201",
+  "difficulty": "easy",
+  "query": "堆叠机换型后首件全尺寸测量去哪里做",
+  "expected_keywords": [
+   "三坐标",
+   "抽检",
+   "首件",
+   "尺寸"
+  ],
+  "min_len": 120
+ },
+ {
+  "id": "F029",
+  "category": "diagnosis",
+  "equipment": "涂胶机GL-201",
+  "difficulty": "medium",
+  "query": "涂胶称重抽检胶量偏少5%以上，怎么校准",
+  "expected_keywords": [
+   "计量泵",
+   "螺杆",
+   "速度",
+   "称重",
+   "首件"
+  ],
+  "min_len": 150
+ },
+ {
+  "id": "F030",
+  "category": "diagnosis",
+  "equipment": "激光焊机LW-301",
+  "difficulty": "hard",
+  "query": "凌晨夜班批量出现虚焊，白班正常，和环境或设备什么因素最相关",
+  "expected_keywords": [
+   "湿度",
+   "温度",
+   "结露",
+   "夜班",
+   "除湿"
+  ],
+  "min_len": 220
+ }
 ]

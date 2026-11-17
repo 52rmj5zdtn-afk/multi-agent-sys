@@ -4,13 +4,20 @@ aggregate.py — Aggregate Node (结果聚合)
 Phase 2 升级：多 Agent 结果合并，按优先级排序，冲突以 SOP 为准。
 
 聚合优先级:
-  diagnosis(故障诊断) → knowledge(维修SOP) → quality(质量) → scheduling(排程) → report(报表)
+  vision_inspection(视觉质检) → predictive_maintenance(预测性维护) → diagnosis(故障诊断)
+  → knowledge(维修SOP) → inspection(巡检) → quality(质量) → scheduling(排程) → report(报表)
 
 冲突检测:
   - SOP 与诊断结论冲突 → 以 SOP 为准，标注差异
   - 多个 Agent 对同一问题不同答案 → 标注并排优先级
 
 输出格式:
+  ## 视觉质检结果
+  ...(vision_inspection 结果)...
+
+  ## 预测性维护评估
+  ...(predictive_maintenance 结果)...
+
   ## 故障诊断
   ...(diagnosis 结果)...
 
@@ -27,9 +34,12 @@ from src.core.logging import get_logger
 logger = get_logger(__name__)
 
 # 聚合优先级（越靠前越重要）
-PRIORITY_ORDER = ["diagnosis", "knowledge", "inspection", "quality", "scheduling", "report"]
+PRIORITY_ORDER = ["vision_inspection", "predictive_maintenance", "diagnosis", "knowledge",
+                  "inspection", "quality", "scheduling", "report"]
 
 SECTION_LABELS = {
+    "vision_inspection": "## 视觉质检结果",
+    "predictive_maintenance": "## 预测性维护评估",
     "diagnosis": "## 故障诊断",
     "knowledge": "## 维修指导",
     "inspection": "## 巡检分析",

@@ -125,6 +125,11 @@ async def lifespan(app: FastAPI):
     memory = get_session_memory()
     expired = await memory.clear_inactive(ttl_seconds=0)  # 清理全部
     logger.info(f"清理了 {expired} 个会话")
+    try:
+        from src.ml import close_all
+        await close_all()
+    except Exception as e:
+        logger.warning(f"ML 客户端关闭失败: {e}")
     logger.info("应用已关闭")
 
 
@@ -147,10 +152,14 @@ app.add_middleware(
 # 路由
 app.include_router(conversation.router, prefix="/api/v1")
 app.include_router(health.router, prefix="/api/v1")
-from src.api.routes import admin, knowledge as knowledge_route, auth as auth_route
+from src.api.routes import admin, knowledge as knowledge_route, auth as auth_route, \
+    devices as devices_route, inspections as inspections_route, work_orders as work_orders_route
 app.include_router(admin.router, prefix="/api/v1")
 app.include_router(knowledge_route.router, prefix="/api/v1")
 app.include_router(auth_route.router, prefix="/api/v1")
+app.include_router(devices_route.router, prefix="/api/v1")
+app.include_router(inspections_route.router, prefix="/api/v1")
+app.include_router(work_orders_route.router, prefix="/api/v1")
 
 # Rate Limit Middleware
 from src.api.middleware.ratelimit import RateLimitMiddleware

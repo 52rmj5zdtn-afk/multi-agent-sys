@@ -14,7 +14,7 @@ fallback.py — 降级策略
     result = await fallback_chain.chat_with_fallback(
         messages=[...],
         rule_fallback_fn=lambda q: f"系统降级中。问题: {q}",
-        query="料筒温度异常"
+        query="激光功率衰减报警"
     )
 
 注意事项:

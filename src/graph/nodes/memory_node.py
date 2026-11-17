@@ -55,10 +55,10 @@ async def _evaluate_knowledge_archival(state: AgentState):
     alarm_match = re.search(r'[A-Z]{2,}-[A-Z0-9]+-\d+', query)
     fault_code = alarm_match.group(0) if alarm_match else ""
 
-    model_match = re.search(r'(海天MA\d+|FANUC|扬力\w+)', query)
+    model_match = re.search(r'(LW-\w+|ST-\w+|GL-\w+|ET-\w+|TRUMPF[\w-]*)', query)
     equipment_model = model_match.group(0) if model_match else ""
     if not equipment_model and answer:
-        model_match = re.search(r'(海天MA\d+|FANUC|扬力\w+)', answer)
+        model_match = re.search(r'(LW-\w+|ST-\w+|GL-\w+|ET-\w+|TRUMPF[\w-]*)', answer)
         equipment_model = model_match.group(0) if model_match else ""
 
     workshop_id = state.user_context.workshop_id if state.user_context else "workshop-a"

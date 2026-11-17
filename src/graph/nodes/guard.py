@@ -68,7 +68,7 @@ async def guard_node(state: AgentState) -> dict:
     4. 注入 user_context
 
     示例 (正常通过):
-        state.user_query = "料筒温度异常怎么处理"
+        state.user_query = "激光功率衰减报警怎么处理"
         state.user_context = None
         result = await guard_node(state)
         # result = {"user_context": UserContext(...), "injection_blocked": False}
@@ -93,6 +93,7 @@ async def guard_node(state: AgentState) -> dict:
         return {
             "injection_blocked": True,
             "blocked_reason": reason,
+            "final_answer": f"🛡️ 输入被安全策略拦截（{reason}）。请重新描述您的设备或工艺问题。",
             "errors": [f"输入被安全策略拦截: {reason}"],
         }
 
@@ -116,6 +117,23 @@ async def guard_node(state: AgentState) -> dict:
         )
         raise
 
+    # 3.5 确定性数据范围管控（不依赖 LLM，防降级模式旁路）
+    scope_deny = _check_data_scope(user, state.user_query)
+    if scope_deny:
+        logger.warning(f"Guard 拦截越权访问: user={user.user_id} role={user.role.value} q='{state.user_query[:60]}'")
+        audit_logger.log_block(
+            event_type=AuditEventType.PERMISSION_DENIED,
+            user_id=user.user_id,
+            severity="warn",
+            detail={"reason": scope_deny, "role": user.role.value},
+        )
+        return {
+            "injection_blocked": True,
+            "blocked_reason": scope_deny,
+            "final_answer": f"🛡️ 请求已被安全策略拦截：{scope_deny}。如有工作需要，请联系班组长或车间主任开通权限。",
+            "errors": [f"权限不足，已被安全策略拦截：{scope_deny}"],
+        }
+
     latency = (time.time() - t0) * 1000
     logger.debug(f"Guard 通过: user={user.user_id}, role={user.role.value}, latency={latency:.1f}ms")
 
@@ -123,3 +141,39 @@ async def guard_node(state: AgentState) -> dict:
         "user_context": user,
         "injection_blocked": False,
     }
+
+
+# 敏感数据关键词（成本/机密工艺/配方）：仅班组长及以上可问
+_COST_SENSITIVE_KW = ["成本", "报表", "机密", "秘级", "密级", "工资", "报价", "配方"]
+# 写操作（排程变更）：仅班组长及以上
+_WRITE_OP_KW = ["改成", "修改排程", "调整排程", "改排程", "删除", "覆盖"]
+_MANAGEMENT_ROLES = {"shift_lead", "workshop_director", "plant_manager"}
+_CROSS_OK_ROLES = {"engineer", "process_engineer", "plant_manager"}
+
+
+def _check_data_scope(user, query: str) -> str | None:
+    """返回拦截原因字符串；None 表示放行。规则确定性执行，不依赖 LLM。"""
+    q = (query or "").lower()
+    role = user.role.value if user else ""
+    ws = (user.workshop_id or "").lower() if user else ""
+
+    # 规则1a: 配方/机密级工艺 → 工程师或厂长（班组长也不可）
+    if any(k in q for k in ("配方", "机密", "秘级", "密级")) and role not in _CROSS_OK_ROLES:
+        return "机密工艺/配方需要工程师或厂长角色"
+    # 规则1b: 成本/报表类 → 班组长及以上
+    if any(k in q for k in ("成本", "报表", "工资", "报价")) and role not in _MANAGEMENT_ROLES:
+        return "敏感数据(成本/报表)需要班组长及以上角色"
+
+    # 规则2: 排程等写操作 → 班组长及以上
+    if any(k in q for k in _WRITE_OP_KW) and role not in _MANAGEMENT_ROLES:
+        return "排程变更等写操作需要班组长及以上角色"
+
+    # 规则3: 跨车间数据访问 → 工程师/厂长（按用户所属车间方向判定，避免误伤本车间提问）
+    if role not in _CROSS_OK_ROLES:
+        mention_b = any(k in q for k in ("b车间", "workshop-b", "车间b"))
+        mention_a = any(k in q for k in ("a车间", "workshop-a", "车间a"))
+        if (ws.startswith("workshop-a") and mention_b) or (ws.startswith("workshop-b") and mention_a) \
+                or ((not ws) and (mention_a or mention_b)):
+            return f"跨车间访问受限（您的车间: {ws or '未分配'}，需工程师或厂长角色）"
+
+    return None

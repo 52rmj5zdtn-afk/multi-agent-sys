@@ -16,8 +16,8 @@ class ChatRequest(BaseModel):
     示例:
         {
             "session_id": null,
-            "message": "注塑机料筒温度异常怎么处理",
-            "context": {"equipment_id": "HA-003", "fault_code": "HT-E-0021"}
+            "message": "激光焊机功率衰减报警怎么处理",
+            "context": {"equipment_id": "LW-301", "fault_code": "LW-E-0021"}
         }
 
     session_id 为 null 时服务端自动创建新会话。
@@ -70,3 +70,14 @@ class KnowledgeSearchRequest(BaseModel):
     workshop_id: str = Field(default="workshop-a")
     top_k: int = Field(default=10, ge=1, le=50)
     hybrid: bool = Field(default=True, description="是否使用混合检索 (vs 纯向量)")
+
+
+class TelemetryIngestRequest(BaseModel):
+    """设备遥测批量摄入请求（预测性维护的输入）。"""
+    readings: list[dict] = Field(
+        ...,
+        min_length=1,
+        max_length=500,
+        description="逐循环传感器数据，每条必须含 cycle(int) 字段，其余为传感器名→值",
+        examples=[[{"cycle": 1, "s02": 518.67, "s03": 642.36}, {"cycle": 2, "s02": 518.67}]],
+    )

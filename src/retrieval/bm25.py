@@ -4,13 +4,13 @@ bm25.py — Elasticsearch BM25 关键词检索
 角色：提供基于 BM25 算法的精确关键词匹配能力。
 
 为什么制造场景需要 BM25:
-- "海天MA1200 料筒温度" → BM25 对型号、参数名做精确匹配，比向量检索更准
-- "HT-E-0021 报警码" → 精确匹配报警码，向量检索可能找错相近含义但不相关的文档
-- 中文分词器 (ik_smart) 能正确切分 "注塑机"/"模具"/"料筒" 等制造术语
+- "TRUMPF LW-301 激光功率" → BM25 对型号、参数名做精确匹配，比向量检索更准
+- "LW-E-0021 报警码" → 精确匹配报警码，向量检索可能找错相近含义但不相关的文档
+- 中文分词器 (ik_smart) 能正确切分 "激光焊机"/"模组"/"保护镜" 等制造术语
 
 BM25 vs Dense 检索:
 - BM25: 适合精确型号、编号、报警码、专业术语
-- Dense: 适合模糊语义如"打出来的件有毛边"→ 匹配到"飞边缺陷SOP"
+- Dense: 适合模糊语义如"打出来的件有焊偏"→ 匹配到"断胶缺陷SOP"
 - 混合: 两者融合 (RRF) 取长补短
 
 ES 索引设计 (manufacturing_knowledge):
@@ -22,7 +22,7 @@ ES 索引设计 (manufacturing_knowledge):
 使用示例:
     from src.retrieval.bm25 import BM25Retriever
     retriever = BM25Retriever(es_client)
-    results = await retriever.search("海天MA1200 料筒温度异常", top_k=10)
+    results = await retriever.search("TRUMPF LW-301 激光功率衰减", top_k=10)
     for r in results:
         print(f"Score: {r['score']}, Content: {r['content'][:50]}")
 
@@ -60,10 +60,10 @@ class BM25Retriever:
     示例:
         retriever = BM25Retriever()
         await retriever.index([
-            {"id": "c1", "content": "注塑机料筒温度异常处理", "title": "注塑机常见故障"},
-            {"id": "c2", "content": "冲压模具保养步骤", "title": "模具保养SOP"},
+            {"id": "c1", "content": "激光焊机功率衰减处理", "title": "激光焊机常见故障"},
+            {"id": "c2", "content": "激光器保护镜更换步骤", "title": "保护镜更换SOP"},
         ])
-        results = await retriever.search("料筒温度异常", top_k=5)
+        results = await retriever.search("激光功率衰减报警", top_k=5)
         # results[0].chunk_id == "c1"
     """
 
@@ -101,7 +101,7 @@ class BM25Retriever:
         """轻量中文分词: 按字/词切分 (Phase 1 简化版, 不需要 jieba)。
 
         示例:
-            >>> retriever._simple_tokenize("注塑机料筒温度异常")
+            >>> retriever._simple_tokenize("激光焊机功率衰减报警")
             # 返回按二元组分词的结果，适配中文
         """
         # 简单二元组分词 (bigram) + 单个字符
@@ -160,7 +160,7 @@ class BM25Retriever:
         返回: 按 BM25 分数降序排列的结果
 
         示例:
-            results = await retriever.search("料筒温度异常", top_k=5)
+            results = await retriever.search("激光功率衰减报警", top_k=5)
             for r in results:
                 print(f"[{r.score:.3f}] {r.chunk_id}: {r.content[:60]}")
         """
